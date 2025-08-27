@@ -56,7 +56,7 @@ pub struct ListTickers {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CurrenciesData {
+pub struct Currencies {
     pub currency: String,
     pub name: String,
 
@@ -76,7 +76,7 @@ pub struct CurrenciesData {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ApiCurrencies {
+pub struct ListCurrencies {
     pub code: String,
-    pub data: Vec<CurrenciesData>,
+    pub data: Vec<Currencies>,
 }

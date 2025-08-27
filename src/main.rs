@@ -1,9 +1,9 @@
-use log::{error, info};
-use std::time::Duration;
 use dotenv::dotenv;
-use std::env;
-use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
+use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
+use std::env;
+use std::time::Duration;
+use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 mod api {
     pub mod common;
     pub mod currencies;
