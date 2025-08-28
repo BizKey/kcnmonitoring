@@ -7,6 +7,7 @@ use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 mod api {
     pub mod common;
     pub mod currencies;
+    pub mod symbols;
     pub mod tickers;
 }
 
@@ -27,10 +28,10 @@ async fn main() -> Result<(), JobSchedulerError> {
     sched
         .add(Job::new_async("*/5 * * * * *", |_, _| {
             Box::pin(async move {
-                match api::currencies::get_currencies().await {
-                    Ok(currencies) => {
-                        for currenc in currencies.iter() {
-                            info!("Символ: {:?}", currenc.currency);
+                match api::symbols::get_symbols().await {
+                    Ok(symbols) => {
+                        for symbol in symbols.iter() {
+                            info!("Символ: {:?}", symbol.symbol);
                         }
                     }
                     Err(e) => {

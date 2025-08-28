@@ -81,5 +81,17 @@ pub struct ListCurrencies {
     pub data: Vec<Currencies>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct Symbol {
+    pub symbol: String,
+    pub name: String,
 
+    #[serde(rename = "baseCurrency")]
+    pub base_currency: String,
+}
 
+#[derive(Debug, Deserialize)]
+pub struct ListSymbols {
+    pub code: String,
+    pub data: Vec<Symbol>,
+}
