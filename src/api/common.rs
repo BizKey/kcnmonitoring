@@ -80,3 +80,6 @@ pub struct ListCurrencies {
     pub code: String,
     pub data: Vec<Currencies>,
 }
+
+
+
