@@ -16,13 +16,13 @@ async fn main() -> Result<(), JobSchedulerError> {
     env_logger::init();
     dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    // let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-        .expect("Failed to create pool");
+    // let pool = PgPoolOptions::new()
+    //     .max_connections(5)
+    //     .connect(&database_url)
+    //     .await
+    //     .expect("Failed to create pool");
     let sched = JobScheduler::new().await?;
 
     sched
