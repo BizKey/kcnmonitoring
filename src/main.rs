@@ -8,6 +8,7 @@ mod api {
     pub mod common;
     pub mod currencies;
     pub mod loan;
+    pub mod requests;
     pub mod symbols;
     pub mod tickers;
 }
