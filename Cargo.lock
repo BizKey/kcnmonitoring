@@ -1022,13 +1022,16 @@ dependencies = [
 name = "kcnmonitoring"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "chrono",
  "dotenv",
  "env_logger",
+ "hmac",
  "log",
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "sqlx",
  "tokio",
  "tokio-cron-scheduler",
