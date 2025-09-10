@@ -1,9 +1,10 @@
 use crate::api::common::{Currencies, ListCurrencies};
 use log::error;
+
 pub async fn get_currencies() -> Result<Vec<Currencies>, Box<dyn std::error::Error>> {
     return match reqwest::get("https://api.kucoin.com/api/v3/currencies").await {
-        Ok(response) => match response.status().as_u16() {
-            200 => match response.text().await {
+        Ok(response) => match response.status().as_str() {
+            "200" => match response.text().await {
                 Ok(text) => match serde_json::from_str::<ListCurrencies>(&text) {
                     Ok(r) => match r.code.as_str() {
                         "200000" => Ok(r.data),

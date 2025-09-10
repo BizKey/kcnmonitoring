@@ -3,8 +3,8 @@ use log::error;
 
 pub async fn get_symbols() -> Result<Vec<Symbol>, Box<dyn std::error::Error>> {
     return match reqwest::get("https://api.kucoin.com/api/v2/symbols").await {
-        Ok(response) => match response.status().as_u16() {
-            200 => match response.text().await {
+        Ok(response) => match response.status().as_str() {
+            "200" => match response.text().await {
                 Ok(text) => match serde_json::from_str::<ListSymbols>(&text) {
                     Ok(r) => match r.code.as_str() {
                         "200000" => Ok(r.data),
