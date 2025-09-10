@@ -1,5 +1,6 @@
 use crate::api::common::{ListTickers, Ticker};
 use log::error;
+
 pub async fn get_tickers() -> Result<Vec<Ticker>, Box<dyn std::error::Error>> {
     return match reqwest::get("https://api.kucoin.com/api/v1/market/allTickers").await {
         Ok(response) => match response.status().as_str() {
