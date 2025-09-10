@@ -21,7 +21,13 @@ pub async fn get_tickers() -> Result<Vec<Ticker>, Box<dyn std::error::Error>> {
         }
     };
 
-    let response: ListTickers = serde_json::from_str(&body)?;
+    let response: ListTickers = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            error!("Ошибка десериализации JSON: {}", e);
+            return Err(e.into());
+        }
+    };
 
     if response.code == "200000" {
         Ok(response.data.ticker)
