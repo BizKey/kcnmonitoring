@@ -22,17 +22,14 @@ pub async fn get_symbols() -> Result<Vec<Symbol>, Box<dyn std::error::Error>> {
         }
     };
 
-    let response: ListSymbols = match serde_json::from_str(&body) {
-        Ok(r) => r,
+    return match serde_json::from_str::<ListSymbols>(&body) {
+        Ok(r) => match r.code.as_str() {
+            "200000" => Ok(r.data),
+            _ => Err(format!("API error: code {}", r.code).into()),
+        },
         Err(e) => {
             error!("Ошибка десериализации JSON: {}", e);
             return Err(e.into());
         }
     };
-
-    if response.code == "200000" {
-        Ok(response.data)
-    } else {
-        Err(format!("API error: code {}", response.code).into())
-    }
 }

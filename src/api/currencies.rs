@@ -21,17 +21,14 @@ pub async fn get_currencies() -> Result<Vec<Currencies>, Box<dyn std::error::Err
         }
     };
 
-    let response: ListCurrencies = match serde_json::from_str(&body) {
-        Ok(r) => r,
+    return match serde_json::from_str::<ListCurrencies>(&body) {
+        Ok(r) => match r.code.as_str() {
+            "200000" => Ok(r.data),
+            _ => Err(format!("API error: code {}", r.code).into()),
+        },
         Err(e) => {
             error!("Ошибка десериализации JSON: {}", e);
             return Err(e.into());
         }
     };
-
-    if response.code == "200000" {
-        Ok(response.data)
-    } else {
-        Err(format!("API error: code {}", response.code).into())
-    }
 }
