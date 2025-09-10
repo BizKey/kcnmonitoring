@@ -95,3 +95,14 @@ pub struct ListSymbols {
     pub code: String,
     pub data: Vec<Symbol>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct LoanMarket {
+    pub currency: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListLoanMarket {
+    pub code: String,
+    pub data: Vec<LoanMarket>,
+}
