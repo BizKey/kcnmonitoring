@@ -23,43 +23,62 @@ async fn main() -> Result<(), JobSchedulerError> {
     //     .connect(&database_url)
     //     .await
     //     .expect("Failed to create pool");
-    let sched = JobScheduler::new().await?;
-
-    sched
-        .add(Job::new_async("*/5 * * * * *", |_, _| {
-            Box::pin(async move {
-                match api::symbols::get_symbols().await {
-                    Ok(symbols) => {
-                        for symbol in symbols.iter() {
-                            info!("Символ: {:?}", symbol.symbol);
+    match JobScheduler::new().await {
+        Ok(s) => {
+            match Job::new_async("*/5 * * * * *", |_, _| {
+                Box::pin(async move {
+                    match api::symbols::get_symbols().await {
+                        Ok(symbols) => {
+                            for symbol in symbols.iter() {
+                                info!("Символ: {:?}", symbol.symbol);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
                         }
                     }
-                    Err(e) => {
-                        error!("Ошибка при выполнении запроса: {}", e)
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу get_symbols")
                     }
-                }
-            })
-        })?)
-        .await?;
+                    Err(e) => return Err(e.into()),
+                },
+                Err(e) => return Err(e.into()),
+            };
 
-    sched
-        .add(Job::new_async("*/7 * * * * *", |_, _| {
-            Box::pin(async move {
-                match api::tickers::get_tickers().await {
-                    Ok(tickers) => {
-                        for ticker in tickers.iter() {
-                            info!("Символ: {:?}", ticker.symbol);
+            match Job::new_async("*/7 * * * * *", |_, _| {
+                Box::pin(async move {
+                    match api::tickers::get_tickers().await {
+                        Ok(tickers) => {
+                            for ticker in tickers.iter() {
+                                info!("Символ: {:?}", ticker.symbol);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
                         }
                     }
-                    Err(e) => {
-                        error!("Ошибка при выполнении запроса: {}", e)
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу get_tickers")
                     }
-                }
-            })
-        })?)
-        .await?;
+                    Err(e) => return Err(e.into()),
+                },
+                Err(e) => return Err(e.into()),
+            }
 
-    sched.start().await?;
+            match s.start().await {
+                Ok(_) => {}
+                Err(e) => return Err(e.into()),
+            }
+        }
+        Err(e) => return Err(e.into()),
+    };
+
     loop {
         tokio::time::sleep(Duration::from_secs(100)).await;
     }
