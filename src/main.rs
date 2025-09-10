@@ -16,6 +16,21 @@ async fn main() -> Result<(), JobSchedulerError> {
     env_logger::init();
     dotenv().ok();
 
+    match env::var("KUCOIN_PASS") {
+        Ok(val) => println!("KUCOIN_PASS: {}", val),
+        Err(e) => println!("Не удалось получить переменную: {}", e),
+    }
+
+    match env::var("KUCOIN_KEY") {
+        Ok(val) => println!("KUCOIN_KEY: {}", val),
+        Err(e) => println!("Не удалось получить переменную: {}", e),
+    }
+
+    match env::var("KUCOIN_SECRET") {
+        Ok(val) => println!("KUCOIN_SECRET: {}", val),
+        Err(e) => println!("Не удалось получить переменную: {}", e),
+    }
+
     // let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     // let pool = PgPoolOptions::new()
@@ -94,10 +109,10 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Err(e) => return Err(e.into()),
             }
 
-            match s.start().await {
-                Ok(_) => {}
-                Err(e) => return Err(e.into()),
-            }
+            // match s.start().await {
+            //     Ok(_) => {}
+            //     Err(e) => return Err(e.into()),
+            // }
         }
         Err(e) => return Err(e.into()),
     };
