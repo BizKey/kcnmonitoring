@@ -48,6 +48,29 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Err(e) => return Err(e.into()),
             };
 
+            match Job::new_async("*/3 * * * * *", |_, _| {
+                Box::pin(async move {
+                    match api::currencies::get_currencies().await {
+                        Ok(symbols) => {
+                            for symbol in symbols.iter() {
+                                info!("Символ: {:?}", symbol.currency);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
+                        }
+                    }
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу get_currencies")
+                    }
+                    Err(e) => return Err(e.into()),
+                },
+                Err(e) => return Err(e.into()),
+            };
+
             match Job::new_async("*/7 * * * * *", |_, _| {
                 Box::pin(async move {
                     match api::tickers::get_tickers().await {
