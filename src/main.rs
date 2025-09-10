@@ -18,17 +18,17 @@ async fn main() -> Result<(), JobSchedulerError> {
 
     match env::var("KUCOIN_PASS") {
         Ok(val) => println!("KUCOIN_PASS: {}", val),
-        Err(e) => println!("Не удалось получить переменную: {}", e),
+        Err(e) => error!("Не удалось получить переменную: {}", e),
     }
 
     match env::var("KUCOIN_KEY") {
         Ok(val) => println!("KUCOIN_KEY: {}", val),
-        Err(e) => println!("Не удалось получить переменную: {}", e),
+        Err(e) => error!("Не удалось получить переменную: {}", e),
     }
 
     match env::var("KUCOIN_SECRET") {
         Ok(val) => println!("KUCOIN_SECRET: {}", val),
-        Err(e) => println!("Не удалось получить переменную: {}", e),
+        Err(e) => error!("Не удалось получить переменную: {}", e),
     }
 
     // let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
