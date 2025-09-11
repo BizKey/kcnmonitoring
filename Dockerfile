@@ -24,6 +24,6 @@ RUN chmod +x /app/kcnmonitoring
 RUN adduser -D -u 1000 myuser
 USER myuser
 
-ENV RUS_LOG=INFO
+ENV RUST_LOG=INFO
 
 CMD ["/app/kcnmonitoring"]
