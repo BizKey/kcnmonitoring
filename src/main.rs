@@ -29,7 +29,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_project_list().await {
                             Ok(t) => {
-                                println!("{:?}", t);
+                                for d in t.iter() {
+                                    info!("{:?}", d);
+                                }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
