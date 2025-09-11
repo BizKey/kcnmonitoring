@@ -1,4 +1,4 @@
-use crate::api::common::{
+use crate::api::models::{
     ApiV1Timestamp, ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Currencies, ListCurrencies,
     ListLoanMarket, ListSymbols, ListTickers, LoanMarket, Symbol, Ticker,
 };

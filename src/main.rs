@@ -1,11 +1,11 @@
 use dotenv::dotenv;
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
-use std::env;
+
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 mod api {
-    pub mod common;
+    pub mod models;
     pub mod requests;
 }
 
