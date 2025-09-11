@@ -1,6 +1,5 @@
 use dotenv::dotenv;
 use log::{error, info};
-use sqlx::postgres::PgPoolOptions;
 
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
@@ -103,7 +102,12 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v1_market_alltickers().await {
                             Ok(t) => {
-                                info!("{:?}", t);
+                                for d in t.iter() {
+                                    info!(
+                                        "symbol:{} symbol_name:{} buy:{:?} best_bid_size:{:?} sell:{:?}",
+                                        d.symbol, d.symbol_name, d.buy, d.best_bid_size, d.sell,
+                                    );
+                                }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
@@ -129,7 +133,19 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_currencies().await {
                             Ok(t) => {
-                                info!("{:?}", t);
+                                for d in t.iter() {
+                                    info!(
+                                        "currency:{} name:{} full_name:{} precision:{} confirms:{:?} contract_address:{:?} is_margin_enabled:{} is_debit_enabled:{}",
+                                        d.currency,
+                                        d.name,
+                                        d.full_name,
+                                        d.precision,
+                                        d.confirms,
+                                        d.contract_address,
+                                        d.is_margin_enabled,
+                                        d.is_debit_enabled,
+                                    );
+                                }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
@@ -155,7 +171,12 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v2_symbols().await {
                             Ok(t) => {
-                                info!("{:?}", t);
+                                for d in t.iter() {
+                                    info!(
+                                        "base_currency:{} name:{} symbol:{}",
+                                        d.base_currency, d.name, d.symbol
+                                    );
+                                }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
