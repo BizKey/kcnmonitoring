@@ -337,7 +337,7 @@ impl KuCoinClient {
         let mut request_builder = self
             .client
             .request(method.clone(), &url)
-            .timeout(Duration::from_secs(5));
+            .timeout(Duration::from_secs(30));
 
         if let Some(params) = &query_params {
             request_builder = request_builder.query(&params);
@@ -385,7 +385,20 @@ impl KuCoinClient {
                 .header("KC-API-KEY-VERSION", "2");
         }
 
-        let response = request_builder.send().await?;
+        let response = request_builder.send().await.map_err(|e| {
+            // Детальный анализ ошибки reqwest
+            if e.is_timeout() {
+                format!("Timeout при запросе к {}: {}", url, e)
+            } else if e.is_connect() {
+                format!("Ошибка подключения к {}: {}", url, e)
+            } else if e.is_request() {
+                format!("Ошибка формирования запроса к {}: {}", url, e)
+            } else if e.is_body() {
+                format!("Ошибка тела запроса к {}: {}", url, e)
+            } else {
+                format!("Неизвестная ошибка при запросе к {}: {}", url, e)
+            }
+        })?;
 
         Ok(response)
     }
