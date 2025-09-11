@@ -57,7 +57,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
             //             Ok(client) => match client.api_v1_market_alltickers().await {
             //                 Ok(t) => {
-            //                     println!("{:?}", t);
+            //                     info!("{:?}", t);
             //                 }
             //                 Err(e) => {
             //                     error!("Ошибка при выполнении запроса: {}", e)
@@ -83,7 +83,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
             //             Ok(client) => match client.api_v3_currencies().await {
             //                 Ok(t) => {
-            //                     println!("{:?}", t);
+            //                     info!("{:?}", t);
             //                 }
             //                 Err(e) => {
             //                     error!("Ошибка при выполнении запроса: {}", e)
@@ -109,7 +109,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
             //             Ok(client) => match client.api_v2_symbols().await {
             //                 Ok(t) => {
-            //                     println!("{:?}", t);
+            //                     info!("{:?}", t);
             //                 }
             //                 Err(e) => {
             //                     error!("Ошибка при выполнении запроса: {}", e)
@@ -134,7 +134,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v1_timestamp().await {
                             Ok(t) => {
-                                println!("{:?}", t);
+                                info!("{:?}", t);
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
