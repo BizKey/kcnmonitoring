@@ -1,6 +1,6 @@
 use crate::api::common::{
-    ApiV1Timestamp, Currencies, ListCurrencies, ListLoanMarket, ListSymbols, ListTickers,
-    LoanMarket, Symbol, Ticker,
+    ApiV1Timestamp, ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Currencies, ListCurrencies,
+    ListLoanMarket, ListSymbols, ListTickers, LoanMarket, Symbol, Ticker,
 };
 use chrono::{DateTime, Utc};
 use hmac::{Hmac, Mac};
@@ -49,9 +49,56 @@ impl KuCoinClient {
         })
     }
 
+    pub async fn api_v3_margin_borrowrate(
+        &self,
+    ) -> Result<ApiV3MarginBorrowRateData, Box<dyn std::error::Error + Send + Sync>> {
+        // Query the borrowing interest rate through this interface.
+        return match self
+            .make_request(
+                reqwest::Method::GET,
+                "/api/v3/margin/borrowRate",
+                None,
+                None,
+                true,
+            )
+            .await
+        {
+            Ok(response) => match response.status().as_str() {
+                "200" => match response.text().await {
+                    Ok(text) => match serde_json::from_str::<ApiV3MarginBorrowRate>(&text) {
+                        Ok(r) => match r.code.as_str() {
+                            "200000" => Ok(r.data),
+                            _ => Err(format!("API error: code {}", r.code).into()),
+                        },
+                        Err(e) => Err(format!(
+                            "Error JSON deserialize:'{}' with data: '{}'",
+                            e, text
+                        )
+                        .into()),
+                    },
+                    Err(e) => {
+                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
+                    }
+                },
+                status => match response.text().await {
+                    Ok(text) => {
+                        return Err(format!(
+                            "Wrong HTTP status: '{}' with body: '{}'",
+                            status, text
+                        )
+                        .into());
+                    }
+                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
+                },
+            },
+            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
+        };
+    }
+
     pub async fn api_v3_project_list(
         &self,
     ) -> Result<Vec<LoanMarket>, Box<dyn std::error::Error + Send + Sync>> {
+        // This API endpoint is used to get the information about the currencies available for lending.
         return match self
             .make_request(
                 reqwest::Method::GET,

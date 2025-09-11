@@ -141,3 +141,22 @@ pub struct ApiV1Timestamp {
     pub code: String,
     pub data: u64,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ApiV3MarginBorrowRateDataItem {
+    pub currency: String,
+    pub hourlyBorrowRate: String,
+    pub annualizedBorrowRate: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApiV3MarginBorrowRateData {
+    pub vipLevel: u8,
+    pub items: Vec<ApiV3MarginBorrowRateDataItem>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApiV3MarginBorrowRate {
+    pub code: String,
+    pub data: ApiV3MarginBorrowRateData,
+}

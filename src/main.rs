@@ -51,6 +51,31 @@ async fn main() -> Result<(), JobSchedulerError> {
                 },
                 Err(e) => return Err(e.into()),
             };
+            match Job::new_async("*/5 * * * * *", |_, _| {
+                Box::pin(async move {
+                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                        Ok(client) => match client.api_v3_margin_borrowrate().await {
+                            Ok(t) => {
+                                info!("{:?}", t);
+                            }
+                            Err(e) => {
+                                error!("Ошибка при выполнении запроса: {}", e)
+                            }
+                        },
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
+                        }
+                    };
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу api_v3_project_list")
+                    }
+                    Err(e) => return Err(e.into()),
+                },
+                Err(e) => return Err(e.into()),
+            };
 
             // match Job::new_async("*/3 * * * * *", |_, _| {
             //     Box::pin(async move {
