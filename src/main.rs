@@ -142,9 +142,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                         "test_passphrase".to_string(),
                         "https://api.kucoin.com".to_string(),
                     );
-                    match client.get_server_time().await {
+                    match client.api_v1_timestamp().await {
                         Ok(t) => {
-                            println!("{}", t);
+                            println!("{:?}", t);
                         }
                         Err(e) => {
                             error!("Ошибка при выполнении запроса: {}", e)

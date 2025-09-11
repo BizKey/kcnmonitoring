@@ -106,3 +106,9 @@ pub struct ListLoanMarket {
     pub code: String,
     pub data: Vec<LoanMarket>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ApiV1Timestamp {
+    pub code: String,
+    pub data: u64,
+}
