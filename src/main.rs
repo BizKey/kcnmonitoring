@@ -104,7 +104,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(t) => {
                                 for d in t.ticker.iter() {
                                     info!(
-                                        "time:{} symbol:{} symbol_name:{} buy:{:?} best_bid_size:{:?} sell:{:?} best_ask_size:{:?} change_rate:{:?} high:{:?}",
+                                        "time:{} symbol:{} symbol_name:{} buy:{:?} best_bid_size:{:?} sell:{:?} best_ask_size:{:?} change_rate:{:?} high:{:?} change_price:{:?} high:{:?} low:{:?} vol:{:?} vol_value:{:?} last:{:?} average_price:{:?} taker_fee_rate:{} maker_fee_rate:{} taker_coefficient:{} maker_coefficient:{}",
                                         t.time,
                                         d.symbol,
                                         d.symbol_name,
@@ -114,6 +114,17 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         d.best_ask_size,
                                         d.change_rate,
                                         d.high,
+                                        d.change_price,
+                                        d.high,
+                                        d.low,
+                                        d.vol,
+                                        d.vol_value,
+                                        d.last,
+                                        d.average_price,
+                                        d.taker_fee_rate,
+                                        d.maker_fee_rate,
+                                        d.taker_coefficient,
+                                        d.maker_coefficient,
                                     );
                                 }
                             }
@@ -143,7 +154,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(t) => {
                                 for d in t.iter() {
                                     info!(
-                                        "currency:{} name:{} full_name:{} precision:{} confirms:{:?} contract_address:{:?} is_margin_enabled:{} is_debit_enabled:{}",
+                                        "currency:{:6} name:{:6} full_name:{:12} precision:{} confirms:{:?} contract_address:{:?} is_margin_enabled:{} is_debit_enabled:{}",
                                         d.currency,
                                         d.name,
                                         d.full_name,
