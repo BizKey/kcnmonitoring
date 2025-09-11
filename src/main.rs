@@ -102,10 +102,18 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v1_market_alltickers().await {
                             Ok(t) => {
-                                for d in t.iter() {
+                                for d in t.ticker.iter() {
                                     info!(
-                                        "symbol:{} symbol_name:{} buy:{:?} best_bid_size:{:?} sell:{:?}",
-                                        d.symbol, d.symbol_name, d.buy, d.best_bid_size, d.sell,
+                                        "time:{} symbol:{} symbol_name:{} buy:{:?} best_bid_size:{:?} sell:{:?} best_ask_size:{:?} change_rate:{:?} high:{:?}",
+                                        t.time,
+                                        d.symbol,
+                                        d.symbol_name,
+                                        d.buy,
+                                        d.best_bid_size,
+                                        d.sell,
+                                        d.best_ask_size,
+                                        d.change_rate,
+                                        d.high,
                                     );
                                 }
                             }

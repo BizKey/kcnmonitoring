@@ -1,6 +1,6 @@
 use crate::api::models::{
     ApiV1Timestamp, ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Currencies, ListCurrencies,
-    ListLoanMarket, ListSymbols, ListTickers, LoanMarket, Symbol, Ticker,
+    ListLoanMarket, ListSymbols, ListTickers, LoanMarket, Symbol, TickerData,
 };
 
 use base64::Engine;
@@ -183,7 +183,7 @@ impl KuCoinClient {
     }
     pub async fn api_v1_market_alltickers(
         &self,
-    ) -> Result<Vec<Ticker>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<TickerData, Box<dyn std::error::Error + Send + Sync>> {
         return match self
             .make_request(
                 reqwest::Method::GET,
@@ -198,7 +198,7 @@ impl KuCoinClient {
                 "200" => match response.text().await {
                     Ok(text) => match serde_json::from_str::<ListTickers>(&text) {
                         Ok(r) => match r.code.as_str() {
-                            "200000" => Ok(r.data.ticker),
+                            "200000" => Ok(r.data),
                             _ => Err(format!("API error: code {}", r.code).into()),
                         },
                         Err(e) => Err(format!(
