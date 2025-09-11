@@ -242,31 +242,31 @@ async fn main() -> Result<(), JobSchedulerError> {
             //     },
             //     Err(e) => return Err(e),
             // }
-            // match Job::new_async("59 * * * * *", |_, _| {
-            //     Box::pin(async move {
-            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-            //             Ok(client) => match client.api_v1_timestamp().await {
-            //                 Ok(timestamp) => {
-            //                     info!("Server timestamp:{}", timestamp);
-            //                 }
-            //                 Err(e) => {
-            //                     error!("Ошибка при выполнении запроса: {}", e)
-            //                 }
-            //             },
-            //             Err(e) => {
-            //                 error!("Ошибка при выполнении запроса: {}", e)
-            //             }
-            //         }
-            //     })
-            // }) {
-            //     Ok(job) => match s.add(job).await {
-            //         Ok(_) => {
-            //             info!("Добавили задачу api_v1_timestamp")
-            //         }
-            //         Err(e) => return Err(e),
-            //     },
-            //     Err(e) => return Err(e),
-            // }
+            match Job::new_async("* * * * * *", |_, _| {
+                Box::pin(async move {
+                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                        Ok(client) => match client.api_v1_timestamp().await {
+                            Ok(timestamp) => {
+                                info!("Server timestamp:{}", timestamp);
+                            }
+                            Err(e) => {
+                                error!("Ошибка при выполнении запроса: {}", e)
+                            }
+                        },
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
+                        }
+                    }
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу api_v1_timestamp")
+                    }
+                    Err(e) => return Err(e),
+                },
+                Err(e) => return Err(e),
+            }
 
             match s.start().await {
                 Ok(_) => {}
