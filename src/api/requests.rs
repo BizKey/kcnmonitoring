@@ -69,10 +69,11 @@ impl KuCoinClient {
                             "200000" => Ok(r.data),
                             _ => Err(format!("API error: code {}", r.code).into()),
                         },
-                        Err(e) => {
-                            error!("Ошибка десериализации JSON: {}", e);
-                            return Err(e.into());
-                        }
+                        Err(e) => Err(format!(
+                            "Error JSON deserialize:'{}' with data: '{}'",
+                            e, text
+                        )
+                        .into()),
                     },
                     Err(e) => {
                         error!("Ошибка при получении текста ответа: {}", e);
@@ -87,9 +88,7 @@ impl KuCoinClient {
                         )
                         .into());
                     }
-                    Err(_) => {
-                        return Err(format!("Wrong HTTP status: '{}'", status).into());
-                    }
+                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
             Err(e) => {
@@ -118,10 +117,11 @@ impl KuCoinClient {
                             "200000" => Ok(r.data),
                             _ => Err(format!("API error: code {}", r.code).into()),
                         },
-                        Err(e) => {
-                            error!("Ошибка десериализации JSON: {}", e);
-                            return Err(e.into());
-                        }
+                        Err(e) => Err(format!(
+                            "Error JSON deserialize:'{}' with data: '{}'",
+                            e, text
+                        )
+                        .into()),
                     },
                     Err(e) => {
                         error!("Ошибка при получении текста ответа: {}", e);
@@ -130,15 +130,9 @@ impl KuCoinClient {
                 },
                 status => match response.text().await {
                     Ok(text) => {
-                        return Err(format!(
-                            "Wrong HTTP status: '{}' with body: '{}'",
-                            status, text
-                        )
-                        .into());
+                        Err(format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into())
                     }
-                    Err(_) => {
-                        return Err(format!("Wrong HTTP status: '{}'", status).into());
-                    }
+                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
             Err(e) => {
@@ -167,10 +161,11 @@ impl KuCoinClient {
                             "200000" => Ok(r.data.ticker),
                             _ => Err(format!("API error: code {}", r.code).into()),
                         },
-                        Err(e) => {
-                            error!("Ошибка десериализации JSON: {}", e);
-                            return Err(e.into());
-                        }
+                        Err(e) => Err(format!(
+                            "Error JSON deserialize:'{}' with data: '{}'",
+                            e, text
+                        )
+                        .into()),
                     },
                     Err(e) => {
                         error!("Ошибка при получении текста ответа: {}", e);
@@ -185,9 +180,7 @@ impl KuCoinClient {
                         )
                         .into());
                     }
-                    Err(_) => {
-                        return Err(format!("Wrong HTTP status: '{}'", status).into());
-                    }
+                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
             Err(e) => {
@@ -210,10 +203,11 @@ impl KuCoinClient {
                             "200000" => Ok(r.data),
                             _ => Err(format!("API error: code {}", r.code).into()),
                         },
-                        Err(e) => {
-                            error!("Ошибка десериализации JSON: {}", e);
-                            return Err(e.into());
-                        }
+                        Err(e) => Err(format!(
+                            "Error JSON deserialize:'{}' with data: '{}'",
+                            e, text
+                        )
+                        .into()),
                     },
                     Err(e) => {
                         error!("Ошибка при получении текста ответа: {}", e);
@@ -228,9 +222,7 @@ impl KuCoinClient {
                         )
                         .into());
                     }
-                    Err(_) => {
-                        return Err(format!("Wrong HTTP status: '{}'", status).into());
-                    }
+                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
             Err(e) => {
@@ -254,10 +246,11 @@ impl KuCoinClient {
                             "200000" => Ok(r),
                             _ => Err(format!("API error: code {}", r.code).into()),
                         },
-                        Err(e) => {
-                            error!("Ошибка десериализации JSON: {}", e);
-                            return Err(e.into());
-                        }
+                        Err(e) => Err(format!(
+                            "Error JSON deserialize:'{}' with data: '{}'",
+                            e, text
+                        )
+                        .into()),
                     },
                     Err(e) => {
                         error!("Ошибка при получении текста ответа: {}", e);
@@ -272,9 +265,7 @@ impl KuCoinClient {
                         )
                         .into());
                     }
-                    Err(_) => {
-                        return Err(format!("Wrong HTTP status: '{}'", status).into());
-                    }
+                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
             Err(e) => {

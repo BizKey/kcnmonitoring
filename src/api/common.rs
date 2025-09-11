@@ -99,6 +99,35 @@ pub struct ListSymbols {
 #[derive(Debug, Deserialize)]
 pub struct LoanMarket {
     pub currency: String,
+
+    #[serde(rename = "purchaseEnable")]
+    pub purchase_enable: bool,
+
+    #[serde(rename = "redeemEnable")]
+    pub redeem_enable: bool,
+
+    pub increment: String,
+
+    #[serde(rename = "minPurchaseSize")]
+    pub min_purchase_size: String,
+
+    #[serde(rename = "maxPurchaseSize")]
+    pub max_purchase_size: String,
+
+    #[serde(rename = "interestIncrement")]
+    pub interest_increment: String,
+
+    #[serde(rename = "minInterestRate")]
+    pub min_interest_rate: String,
+
+    #[serde(rename = "marketInterestRate")]
+    pub market_interest_rate: String,
+
+    #[serde(rename = "maxInterestRate")]
+    pub max_interest_rate: String,
+
+    #[serde(rename = "autoPurchaseEnable")]
+    pub auto_purchase_enable: bool,
 }
 
 #[derive(Debug, Deserialize)]
