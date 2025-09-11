@@ -2,11 +2,12 @@ use crate::api::models::{
     ApiV1Timestamp, ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Currencies, ListCurrencies,
     ListLoanMarket, ListSymbols, ListTickers, LoanMarket, Symbol, Ticker,
 };
-use chrono::{DateTime, Utc};
+
+use base64::Engine;
 use hmac::{Hmac, Mac};
-use log::error;
-use reqwest::{Client, Response, StatusCode};
-use serde::{Deserialize, Serialize};
+
+use reqwest::{Client, Response};
+
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::env;
@@ -313,7 +314,7 @@ impl KuCoinClient {
             .expect("HMAC can take key of any size");
         mac.update(string_to_sign.as_bytes());
         let result = mac.finalize();
-        base64::encode(result.into_bytes())
+        base64::engine::general_purpose::STANDARD.encode(result.into_bytes())
     }
 
     fn generate_passphrase_signature(&self) -> String {
@@ -321,7 +322,7 @@ impl KuCoinClient {
             .expect("HMAC can take key of any size");
         mac.update(self.api_passphrase.as_bytes());
         let result = mac.finalize();
-        base64::encode(result.into_bytes())
+        base64::engine::general_purpose::STANDARD.encode(result.into_bytes())
     }
     async fn make_request(
         &self,
@@ -365,7 +366,7 @@ impl KuCoinClient {
 
             let signature = self.generate_signature(
                 timestamp,
-                &method.to_string(),
+                method.as_ref(),
                 endpoint,
                 &query_string,
                 &body_str,
