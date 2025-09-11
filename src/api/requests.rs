@@ -263,9 +263,7 @@ impl KuCoinClient {
         };
     }
 
-    pub async fn api_v1_timestamp(
-        &self,
-    ) -> Result<ApiV1Timestamp, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn api_v1_timestamp(&self) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
         return match self
             .make_request(reqwest::Method::GET, "/api/v1/timestamp", None, None, false)
             .await
@@ -274,7 +272,7 @@ impl KuCoinClient {
                 "200" => match response.text().await {
                     Ok(text) => match serde_json::from_str::<ApiV1Timestamp>(&text) {
                         Ok(r) => match r.code.as_str() {
-                            "200000" => Ok(r),
+                            "200000" => Ok(r.data),
                             _ => Err(format!("API error: code {}", r.code).into()),
                         },
                         Err(e) => Err(format!(
