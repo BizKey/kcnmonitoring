@@ -14,21 +14,6 @@ async fn main() -> Result<(), JobSchedulerError> {
     env_logger::init();
     dotenv().ok();
 
-    match env::var("KUCOIN_PASS") {
-        Ok(val) => println!("KUCOIN_PASS: {}", val),
-        Err(e) => error!("Не удалось получить переменную:'KUCOIN_PASS' {}", e),
-    }
-
-    match env::var("KUCOIN_KEY") {
-        Ok(val) => println!("KUCOIN_KEY: {}", val),
-        Err(e) => error!("Не удалось получить переменную:'KUCOIN_KEY' {}", e),
-    }
-
-    match env::var("KUCOIN_SECRET") {
-        Ok(val) => println!("KUCOIN_SECRET: {}", val),
-        Err(e) => error!("Не удалось получить переменную:'KUCOIN_SECRET' {}", e),
-    }
-
     // let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     // let pool = PgPoolOptions::new()
@@ -41,16 +26,15 @@ async fn main() -> Result<(), JobSchedulerError> {
         Ok(s) => {
             match Job::new_async("*/5 * * * * *", |_, _| {
                 Box::pin(async move {
-                    let client = api::requests::KuCoinClient::new(
-                        "test_key".to_string(),
-                        "test_secret".to_string(),
-                        "test_passphrase".to_string(),
-                        "https://api.kucoin.com".to_string(),
-                    );
-                    match client.api_v3_project_list().await {
-                        Ok(t) => {
-                            println!("{:?}", t);
-                        }
+                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                        Ok(client) => match client.api_v3_project_list().await {
+                            Ok(t) => {
+                                println!("{:?}", t);
+                            }
+                            Err(e) => {
+                                error!("Ошибка при выполнении запроса: {}", e)
+                            }
+                        },
                         Err(e) => {
                             error!("Ошибка при выполнении запроса: {}", e)
                         }
@@ -59,114 +43,110 @@ async fn main() -> Result<(), JobSchedulerError> {
             }) {
                 Ok(job) => match s.add(job).await {
                     Ok(_) => {
-                        info!("Добавили задачу get_symbols")
+                        info!("Добавили задачу api_v3_project_list")
                     }
                     Err(e) => return Err(e.into()),
                 },
                 Err(e) => return Err(e.into()),
             };
 
-            match Job::new_async("*/3 * * * * *", |_, _| {
-                Box::pin(async move {
-                    let client = api::requests::KuCoinClient::new(
-                        "test_key".to_string(),
-                        "test_secret".to_string(),
-                        "test_passphrase".to_string(),
-                        "https://api.kucoin.com".to_string(),
-                    );
-                    match client.api_v1_market_alltickers().await {
-                        Ok(t) => {
-                            println!("{:?}", t);
-                        }
-                        Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
-                        }
-                    };
-                })
-            }) {
-                Ok(job) => match s.add(job).await {
-                    Ok(_) => {
-                        info!("Добавили задачу get_currencies")
-                    }
-                    Err(e) => return Err(e.into()),
-                },
-                Err(e) => return Err(e.into()),
-            };
+            // match Job::new_async("*/3 * * * * *", |_, _| {
+            //     Box::pin(async move {
+            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+            //             Ok(client) => match client.api_v1_market_alltickers().await {
+            //                 Ok(t) => {
+            //                     println!("{:?}", t);
+            //                 }
+            //                 Err(e) => {
+            //                     error!("Ошибка при выполнении запроса: {}", e)
+            //                 }
+            //             },
+            //             Err(e) => {
+            //                 error!("Ошибка при выполнении запроса: {}", e)
+            //             }
+            //         };
+            //     })
+            // }) {
+            //     Ok(job) => match s.add(job).await {
+            //         Ok(_) => {
+            //             info!("Добавили задачу api_v1_market_alltickers")
+            //         }
+            //         Err(e) => return Err(e.into()),
+            //     },
+            //     Err(e) => return Err(e.into()),
+            // };
 
-            match Job::new_async("*/7 * * * * *", |_, _| {
-                Box::pin(async move {
-                    let client = api::requests::KuCoinClient::new(
-                        "test_key".to_string(),
-                        "test_secret".to_string(),
-                        "test_passphrase".to_string(),
-                        "https://api.kucoin.com".to_string(),
-                    );
-                    match client.api_v3_currencies().await {
-                        Ok(t) => {
-                            println!("{:?}", t);
-                        }
-                        Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
-                        }
-                    };
-                })
-            }) {
-                Ok(job) => match s.add(job).await {
-                    Ok(_) => {
-                        info!("Добавили задачу get_tickers")
-                    }
-                    Err(e) => return Err(e.into()),
-                },
-                Err(e) => return Err(e.into()),
-            }
+            // match Job::new_async("*/7 * * * * *", |_, _| {
+            //     Box::pin(async move {
+            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+            //             Ok(client) => match client.api_v3_currencies().await {
+            //                 Ok(t) => {
+            //                     println!("{:?}", t);
+            //                 }
+            //                 Err(e) => {
+            //                     error!("Ошибка при выполнении запроса: {}", e)
+            //                 }
+            //             },
+            //             Err(e) => {
+            //                 error!("Ошибка при выполнении запроса: {}", e)
+            //             }
+            //         };
+            //     })
+            // }) {
+            //     Ok(job) => match s.add(job).await {
+            //         Ok(_) => {
+            //             info!("Добавили задачу api_v3_currencies")
+            //         }
+            //         Err(e) => return Err(e.into()),
+            //     },
+            //     Err(e) => return Err(e.into()),
+            // }
 
+            // match Job::new_async("*/7 * * * * *", |_, _| {
+            //     Box::pin(async move {
+            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+            //             Ok(client) => match client.api_v2_symbols().await {
+            //                 Ok(t) => {
+            //                     println!("{:?}", t);
+            //                 }
+            //                 Err(e) => {
+            //                     error!("Ошибка при выполнении запроса: {}", e)
+            //                 }
+            //             },
+            //             Err(e) => {
+            //                 error!("Ошибка при выполнении запроса: {}", e)
+            //             }
+            //         };
+            //     })
+            // }) {
+            //     Ok(job) => match s.add(job).await {
+            //         Ok(_) => {
+            //             info!("Добавили задачу api_v2_symbols")
+            //         }
+            //         Err(e) => return Err(e.into()),
+            //     },
+            //     Err(e) => return Err(e.into()),
+            // }
             match Job::new_async("*/7 * * * * *", |_, _| {
                 Box::pin(async move {
-                    let client = api::requests::KuCoinClient::new(
-                        "test_key".to_string(),
-                        "test_secret".to_string(),
-                        "test_passphrase".to_string(),
-                        "https://api.kucoin.com".to_string(),
-                    );
-                    match client.api_v2_symbols().await {
-                        Ok(t) => {
-                            println!("{:?}", t);
-                        }
+                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                        Ok(client) => match client.api_v1_timestamp().await {
+                            Ok(t) => {
+                                println!("{:?}", t);
+                            }
+                            Err(e) => {
+                                error!("Ошибка при выполнении запроса: {}", e)
+                            }
+                        },
                         Err(e) => {
                             error!("Ошибка при выполнении запроса: {}", e)
                         }
-                    };
-                })
-            }) {
-                Ok(job) => match s.add(job).await {
-                    Ok(_) => {
-                        info!("Добавили задачу get_loan_market")
                     }
-                    Err(e) => return Err(e.into()),
-                },
-                Err(e) => return Err(e.into()),
-            }
-            match Job::new_async("*/7 * * * * *", |_, _| {
-                Box::pin(async move {
-                    let client = api::requests::KuCoinClient::new(
-                        "test_key".to_string(),
-                        "test_secret".to_string(),
-                        "test_passphrase".to_string(),
-                        "https://api.kucoin.com".to_string(),
-                    );
-                    match client.api_v1_timestamp().await {
-                        Ok(t) => {
-                            println!("{:?}", t);
-                        }
-                        Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
-                        }
-                    };
                 })
             }) {
                 Ok(job) => match s.add(job).await {
                     Ok(_) => {
-                        info!("Добавили задачу get_loan_market")
+                        info!("Добавили задачу api_v1_timestamp")
                     }
                     Err(e) => return Err(e.into()),
                 },

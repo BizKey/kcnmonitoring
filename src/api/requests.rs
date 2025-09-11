@@ -6,7 +6,7 @@ use log::error;
 use reqwest::{Client, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
+use std::env;
 #[derive(Debug, Clone)]
 pub struct KuCoinClient {
     client: Client,
@@ -17,19 +17,29 @@ pub struct KuCoinClient {
 }
 
 impl KuCoinClient {
-    pub fn new(
-        api_key: String,
-        api_secret: String,
-        api_passphrase: String,
-        base_url: String,
-    ) -> Self {
-        Self {
+    pub fn new(base_url: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let api_passphrase = match env::var("KUCOIN_PASS") {
+            Ok(val) => val,
+            Err(e) => return Err(e.into()),
+        };
+
+        let api_key = match env::var("KUCOIN_KEY") {
+            Ok(val) => val,
+            Err(e) => return Err(e.into()),
+        };
+
+        let api_secret = match env::var("KUCOIN_SECRET") {
+            Ok(val) => val,
+            Err(e) => return Err(e.into()),
+        };
+
+        Ok(Self {
             client: Client::new(),
             api_key,
             api_secret,
             api_passphrase,
             base_url,
-        }
+        })
     }
 
     pub async fn api_v3_project_list(
@@ -41,7 +51,7 @@ impl KuCoinClient {
                 "/api/v3/project/list",
                 None,
                 None,
-                false,
+                true,
             )
             .await
         {
