@@ -2,9 +2,9 @@ use crate::api::models::{
     ApiV1Timestamp, ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Currencies, ListCurrencies,
     ListLoanMarket, ListSymbols, ListTickers, LoanMarket, Symbol, TickerData,
 };
-
 use base64::Engine;
 use hmac::{Hmac, Mac};
+use std::time::Duration;
 
 use reqwest::{Client, Response};
 
@@ -334,7 +334,10 @@ impl KuCoinClient {
     ) -> Result<Response, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!("{}{}", self.base_url, endpoint);
 
-        let mut request_builder = self.client.request(method.clone(), &url);
+        let mut request_builder = self
+            .client
+            .request(method.clone(), &url)
+            .timeout(Duration::from_secs(5));
 
         if let Some(params) = &query_params {
             request_builder = request_builder.query(&params);
