@@ -112,18 +112,44 @@ async fn main() -> Result<(), JobSchedulerError> {
             //     Err(e) => return Err(e.into()),
             // }
 
+            // match Job::new_async("*/7 * * * * *", |_, _| {
+            //     Box::pin(async move {
+            //         match api::loan::get_loan_market().await {
+            //             Ok(tickers) => {
+            //                 for ticker in tickers.iter() {
+            //                     info!("Символ: {:?}", ticker.currency);
+            //                 }
+            //             }
+            //             Err(e) => {
+            //                 error!("Ошибка при выполнении запроса: {}", e)
+            //             }
+            //         }
+            //     })
+            // }) {
+            //     Ok(job) => match s.add(job).await {
+            //         Ok(_) => {
+            //             info!("Добавили задачу get_loan_market")
+            //         }
+            //         Err(e) => return Err(e.into()),
+            //     },
+            //     Err(e) => return Err(e.into()),
+            // }
             match Job::new_async("*/7 * * * * *", |_, _| {
                 Box::pin(async move {
-                    match api::loan::get_loan_market().await {
-                        Ok(tickers) => {
-                            for ticker in tickers.iter() {
-                                info!("Символ: {:?}", ticker.currency);
-                            }
+                    let client = api::requests::KuCoinClient::new(
+                        "test_key".to_string(),
+                        "test_secret".to_string(),
+                        "test_passphrase".to_string(),
+                        "https://api.kucoin.com".to_string(),
+                    );
+                    match client.get_server_time().await {
+                        Ok(t) => {
+                            println!("{}", t);
                         }
                         Err(e) => {
                             error!("Ошибка при выполнении запроса: {}", e)
                         }
-                    }
+                    };
                 })
             }) {
                 Ok(job) => match s.add(job).await {
