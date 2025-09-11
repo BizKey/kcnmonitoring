@@ -76,8 +76,7 @@ impl KuCoinClient {
                         .into()),
                     },
                     Err(e) => {
-                        error!("Ошибка при получении текста ответа: {}", e);
-                        return Err(e.into());
+                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
                     }
                 },
                 status => match response.text().await {
@@ -91,10 +90,7 @@ impl KuCoinClient {
                     Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
-            Err(e) => {
-                error!("ошибка при получении HTTP-запроса: {}", e);
-                return Err(e.into());
-            }
+            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
     }
     pub async fn api_v3_currencies(
@@ -124,8 +120,7 @@ impl KuCoinClient {
                         .into()),
                     },
                     Err(e) => {
-                        error!("Ошибка при получении текста ответа: {}", e);
-                        return Err(e.into());
+                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
                     }
                 },
                 status => match response.text().await {
@@ -135,10 +130,7 @@ impl KuCoinClient {
                     Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
-            Err(e) => {
-                error!("ошибка при получении HTTP-запроса: {}", e);
-                return Err(e.into());
-            }
+            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
     }
     pub async fn api_v1_market_alltickers(
@@ -168,8 +160,7 @@ impl KuCoinClient {
                         .into()),
                     },
                     Err(e) => {
-                        error!("Ошибка при получении текста ответа: {}", e);
-                        return Err(e.into());
+                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
                     }
                 },
                 status => match response.text().await {
@@ -183,10 +174,7 @@ impl KuCoinClient {
                     Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
-            Err(e) => {
-                error!("ошибка при получении HTTP-запроса: {}", e);
-                return Err(e.into());
-            }
+            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
     }
     pub async fn api_v2_symbols(
@@ -210,8 +198,7 @@ impl KuCoinClient {
                         .into()),
                     },
                     Err(e) => {
-                        error!("Ошибка при получении текста ответа: {}", e);
-                        return Err(e.into());
+                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
                     }
                 },
                 status => match response.text().await {
@@ -225,10 +212,7 @@ impl KuCoinClient {
                     Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
-            Err(e) => {
-                error!("ошибка при получении HTTP-запроса: {}", e);
-                return Err(e.into());
-            }
+            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
     }
 
@@ -253,8 +237,7 @@ impl KuCoinClient {
                         .into()),
                     },
                     Err(e) => {
-                        error!("Ошибка при получении текста ответа: {}", e);
-                        return Err(e.into());
+                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
                     }
                 },
                 status => match response.text().await {
@@ -268,10 +251,7 @@ impl KuCoinClient {
                     Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
                 },
             },
-            Err(e) => {
-                error!("ошибка при получении HTTP-запроса: {}", e);
-                return Err(e.into());
-            }
+            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
     }
 
