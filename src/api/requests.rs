@@ -1,4 +1,7 @@
-use crate::api::common::ApiV1Timestamp;
+use crate::api::common::{
+    ApiV1Timestamp, Currencies, ListCurrencies, ListLoanMarket, ListSymbols, ListTickers,
+    LoanMarket, Symbol, Ticker,
+};
 use log::error;
 use reqwest::{Client, Response, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -28,6 +31,171 @@ impl KuCoinClient {
             base_url,
         }
     }
+    pub async fn api_v3_project_list(
+        &self,
+    ) -> Result<Vec<LoanMarket>, Box<dyn std::error::Error + Send + Sync>> {
+        return match self
+            .make_request(
+                reqwest::Method::GET,
+                "/api/v3/project/list",
+                None,
+                None,
+                false,
+            )
+            .await
+        {
+            Ok(response) => match response.status().as_str() {
+                "200" => match response.text().await {
+                    Ok(text) => match serde_json::from_str::<ListLoanMarket>(&text) {
+                        Ok(r) => match r.code.as_str() {
+                            "200000" => Ok(r.data),
+                            _ => Err(format!("API error: code {}", r.code).into()),
+                        },
+                        Err(e) => {
+                            error!("Ошибка десериализации JSON: {}", e);
+                            return Err(e.into());
+                        }
+                    },
+                    Err(e) => {
+                        error!("Ошибка при получении текста ответа: {}", e);
+                        return Err(e.into());
+                    }
+                },
+                status => {
+                    match response.text().await {
+                        Ok(text) =>{
+                            error!("Получен неуспешный HTTP статус: {} on api_v3_project_list body{}", status, text);
+                        },
+                        Err(e) =>{}
+                    }
+                    error!("Получен неуспешный HTTP статус: {} on api_v3_project_list", status);
+                    return Err(format!("HTTP ошибка: статус {} on api_v3_project_list", status).into());
+                }
+            },
+            Err(e) => {
+                error!("ошибка при получении HTTP-запроса: {}", e);
+                return Err(e.into());
+            }
+        };
+    }
+    pub async fn api_v3_currencies(
+        &self,
+    ) -> Result<Vec<Currencies>, Box<dyn std::error::Error + Send + Sync>> {
+        return match self
+            .make_request(
+                reqwest::Method::GET,
+                "/api/v3/currencies",
+                None,
+                None,
+                false,
+            )
+            .await
+        {
+            Ok(response) => match response.status().as_str() {
+                "200" => match response.text().await {
+                    Ok(text) => match serde_json::from_str::<ListCurrencies>(&text) {
+                        Ok(r) => match r.code.as_str() {
+                            "200000" => Ok(r.data),
+                            _ => Err(format!("API error: code {}", r.code).into()),
+                        },
+                        Err(e) => {
+                            error!("Ошибка десериализации JSON: {}", e);
+                            return Err(e.into());
+                        }
+                    },
+                    Err(e) => {
+                        error!("Ошибка при получении текста ответа: {}", e);
+                        return Err(e.into());
+                    }
+                },
+                status => {
+                    error!("Получен неуспешный HTTP статус: {}", status);
+                    return Err(format!("HTTP ошибка: статус {}", status).into());
+                }
+            },
+            Err(e) => {
+                error!("ошибка при получении HTTP-запроса: {}", e);
+                return Err(e.into());
+            }
+        };
+    }
+    pub async fn api_v1_market_alltickers(
+        &self,
+    ) -> Result<Vec<Ticker>, Box<dyn std::error::Error + Send + Sync>> {
+        return match self
+            .make_request(
+                reqwest::Method::GET,
+                "/api/v1/market/allTickers",
+                None,
+                None,
+                false,
+            )
+            .await
+        {
+            Ok(response) => match response.status().as_str() {
+                "200" => match response.text().await {
+                    Ok(text) => match serde_json::from_str::<ListTickers>(&text) {
+                        Ok(r) => match r.code.as_str() {
+                            "200000" => Ok(r.data.ticker),
+                            _ => Err(format!("API error: code {}", r.code).into()),
+                        },
+                        Err(e) => {
+                            error!("Ошибка десериализации JSON: {}", e);
+                            return Err(e.into());
+                        }
+                    },
+                    Err(e) => {
+                        error!("Ошибка при получении текста ответа: {}", e);
+                        return Err(e.into());
+                    }
+                },
+                status => {
+                    error!("Получен неуспешный HTTP статус: {}", status);
+                    return Err(format!("HTTP ошибка: статус {}", status).into());
+                }
+            },
+            Err(e) => {
+                error!("ошибка при получении HTTP-запроса: {}", e);
+                return Err(e.into());
+            }
+        };
+    }
+    pub async fn api_v2_symbols(
+        &self,
+    ) -> Result<Vec<Symbol>, Box<dyn std::error::Error + Send + Sync>> {
+        return match self
+            .make_request(reqwest::Method::GET, "/api/v2/symbols", None, None, false)
+            .await
+        {
+            Ok(response) => match response.status().as_str() {
+                "200" => match response.text().await {
+                    Ok(text) => match serde_json::from_str::<ListSymbols>(&text) {
+                        Ok(r) => match r.code.as_str() {
+                            "200000" => Ok(r.data),
+                            _ => Err(format!("API error: code {}", r.code).into()),
+                        },
+                        Err(e) => {
+                            error!("Ошибка десериализации JSON: {}", e);
+                            return Err(e.into());
+                        }
+                    },
+                    Err(e) => {
+                        error!("Ошибка при получении текста ответа: {}", e);
+                        return Err(e.into());
+                    }
+                },
+                status => {
+                    error!("Получен неуспешный HTTP статус: {}", status);
+                    return Err(format!("HTTP ошибка: статус {}", status).into());
+                }
+            },
+            Err(e) => {
+                error!("ошибка при получении HTTP-запроса: {}", e);
+                return Err(e.into());
+            }
+        };
+    }
+
     pub async fn api_v1_timestamp(
         &self,
     ) -> Result<ApiV1Timestamp, Box<dyn std::error::Error + Send + Sync>> {
