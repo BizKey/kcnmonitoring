@@ -31,6 +31,7 @@ impl KuCoinClient {
             base_url,
         }
     }
+
     pub async fn api_v3_project_list(
         &self,
     ) -> Result<Vec<LoanMarket>, Box<dyn std::error::Error + Send + Sync>> {
@@ -61,16 +62,18 @@ impl KuCoinClient {
                         return Err(e.into());
                     }
                 },
-                status => {
-                    match response.text().await {
-                        Ok(text) =>{
-                            error!("Получен неуспешный HTTP статус: {} on api_v3_project_list body{}", status, text);
-                        },
-                        Err(e) =>{}
+                status => match response.text().await {
+                    Ok(text) => {
+                        return Err(format!(
+                            "Wrong HTTP status: '{}' with body: '{}'",
+                            status, text
+                        )
+                        .into());
                     }
-                    error!("Получен неуспешный HTTP статус: {} on api_v3_project_list", status);
-                    return Err(format!("HTTP ошибка: статус {} on api_v3_project_list", status).into());
-                }
+                    Err(_) => {
+                        return Err(format!("Wrong HTTP status: '{}'", status).into());
+                    }
+                },
             },
             Err(e) => {
                 error!("ошибка при получении HTTP-запроса: {}", e);
@@ -108,10 +111,18 @@ impl KuCoinClient {
                         return Err(e.into());
                     }
                 },
-                status => {
-                    error!("Получен неуспешный HTTP статус: {}", status);
-                    return Err(format!("HTTP ошибка: статус {}", status).into());
-                }
+                status => match response.text().await {
+                    Ok(text) => {
+                        return Err(format!(
+                            "Wrong HTTP status: '{}' with body: '{}'",
+                            status, text
+                        )
+                        .into());
+                    }
+                    Err(_) => {
+                        return Err(format!("Wrong HTTP status: '{}'", status).into());
+                    }
+                },
             },
             Err(e) => {
                 error!("ошибка при получении HTTP-запроса: {}", e);
@@ -149,10 +160,18 @@ impl KuCoinClient {
                         return Err(e.into());
                     }
                 },
-                status => {
-                    error!("Получен неуспешный HTTP статус: {}", status);
-                    return Err(format!("HTTP ошибка: статус {}", status).into());
-                }
+                status => match response.text().await {
+                    Ok(text) => {
+                        return Err(format!(
+                            "Wrong HTTP status: '{}' with body: '{}'",
+                            status, text
+                        )
+                        .into());
+                    }
+                    Err(_) => {
+                        return Err(format!("Wrong HTTP status: '{}'", status).into());
+                    }
+                },
             },
             Err(e) => {
                 error!("ошибка при получении HTTP-запроса: {}", e);
@@ -184,10 +203,18 @@ impl KuCoinClient {
                         return Err(e.into());
                     }
                 },
-                status => {
-                    error!("Получен неуспешный HTTP статус: {}", status);
-                    return Err(format!("HTTP ошибка: статус {}", status).into());
-                }
+                status => match response.text().await {
+                    Ok(text) => {
+                        return Err(format!(
+                            "Wrong HTTP status: '{}' with body: '{}'",
+                            status, text
+                        )
+                        .into());
+                    }
+                    Err(_) => {
+                        return Err(format!("Wrong HTTP status: '{}'", status).into());
+                    }
+                },
             },
             Err(e) => {
                 error!("ошибка при получении HTTP-запроса: {}", e);
@@ -220,10 +247,18 @@ impl KuCoinClient {
                         return Err(e.into());
                     }
                 },
-                status => {
-                    error!("Получен неуспешный HTTP статус: {}", status);
-                    return Err(format!("HTTP ошибка: статус {}", status).into());
-                }
+                status => match response.text().await {
+                    Ok(text) => {
+                        return Err(format!(
+                            "Wrong HTTP status: '{}' with body: '{}'",
+                            status, text
+                        )
+                        .into());
+                    }
+                    Err(_) => {
+                        return Err(format!("Wrong HTTP status: '{}'", status).into());
+                    }
+                },
             },
             Err(e) => {
                 error!("ошибка при получении HTTP-запроса: {}", e);
