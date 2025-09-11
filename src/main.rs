@@ -119,9 +119,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                     Ok(_) => {
                         info!("Добавили задачу api_v1_market_alltickers")
                     }
-                    Err(e) => return Err(e.into()),
+                    Err(e) => return Err(e),
                 },
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             };
 
             match Job::new_async("59 * * * * *", |_, _| {
@@ -145,9 +145,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                     Ok(_) => {
                         info!("Добавили задачу api_v3_currencies")
                     }
-                    Err(e) => return Err(e.into()),
+                    Err(e) => return Err(e),
                 },
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             }
 
             match Job::new_async("59 * * * * *", |_, _| {
@@ -171,9 +171,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                     Ok(_) => {
                         info!("Добавили задачу api_v2_symbols")
                     }
-                    Err(e) => return Err(e.into()),
+                    Err(e) => return Err(e),
                 },
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             }
             match Job::new_async("59 * * * * *", |_, _| {
                 Box::pin(async move {
