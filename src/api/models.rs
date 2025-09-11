@@ -145,13 +145,19 @@ pub struct ApiV1Timestamp {
 #[derive(Debug, Deserialize)]
 pub struct ApiV3MarginBorrowRateDataItem {
     pub currency: String,
-    pub hourlyBorrowRate: String,
-    pub annualizedBorrowRate: String,
+
+    #[serde(rename = "hourlyBorrowRate")]
+    pub hourly_borrow_rate: String,
+
+    #[serde(rename = "annualizedBorrowRate")]
+    pub annualized_borrow_rate: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ApiV3MarginBorrowRateData {
-    pub vipLevel: u8,
+    #[serde(rename = "vipLevel")]
+    pub vip_level: u8,
+
     pub items: Vec<ApiV3MarginBorrowRateDataItem>,
 }
 
