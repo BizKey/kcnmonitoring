@@ -334,10 +334,7 @@ impl KuCoinClient {
     ) -> Result<Response, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!("{}{}", self.base_url, endpoint);
 
-        let mut request_builder = self
-            .client
-            .request(method.clone(), &url)
-            .timeout(Duration::from_secs(5));
+        let mut request_builder = self.client.request(method.clone(), &url);
 
         if let Some(params) = &query_params {
             request_builder = request_builder.query(&params);
