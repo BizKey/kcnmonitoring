@@ -99,7 +99,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             //     Err(e) => return Err(e),
             // };
 
-            match Job::new_async("0 * * * * *", move |_, _| {
+            match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool.clone();
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
