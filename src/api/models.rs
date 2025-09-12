@@ -62,8 +62,8 @@ pub struct Currencies {
 
     #[serde(rename = "fullName")]
     pub full_name: String,
-    pub precision: u8,
-    pub confirms: Option<u8>,
+    pub precision: i16,
+    pub confirms: Option<i16>,
 
     #[serde(rename = "contractAddress")]
     pub contract_address: Option<String>,
