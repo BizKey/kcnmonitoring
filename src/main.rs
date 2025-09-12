@@ -91,7 +91,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             //     Err(e) => return Err(e),
             // };
 
-            match Job::new_async("59 * * * * *", |_, _| {
+            match Job::new_async("0 * * * * *", |_, _| {
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v1_market_alltickers().await {
@@ -106,31 +106,14 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     .expect("Failed to create pool");
 
                                 for d in t.ticker.iter() {
-                                    info!(
-                                        "time:{} symbol:{} symbol_name:{} buy:{:?} best_bid_size:{:?} sell:{:?} best_ask_size:{:?} change_rate:{:?} change_price:{:?} high:{:?} low:{:?} vol:{:?} vol_value:{:?} last:{:?} average_price:{:?} taker_fee_rate:{} maker_fee_rate:{} taker_coefficient:{} maker_coefficient:{}",
-                                        t.time,
-                                        d.symbol,
-                                        d.symbol_name,
-                                        d.buy,
-                                        d.best_bid_size,
-                                        d.sell,
-                                        d.best_ask_size,
-                                        d.change_rate,
-                                        d.change_price,
-                                        d.high,
-                                        d.low,
-                                        d.vol,
-                                        d.vol_value,
-                                        d.last,
-                                        d.average_price,
-                                        d.taker_fee_rate,
-                                        d.maker_fee_rate,
-                                        d.taker_coefficient,
-                                        d.maker_coefficient,
-                                    );
-
                                     let _ = sqlx::query(
-                                        "INSERT INTO Ticker (symbol, symbol_name, buy, best_bid_size, sell, best_ask_size, change_rate, change_price, high, low, vol, vol_value, last, average_price, taker_fee_rate, maker_fee_rate, taker_coefficient, maker_coefficient) VALUES ($1,$2)",
+                                        "INSERT INTO Ticker (
+                                              symbol, symbol_name, buy, best_bid_size, sell, best_ask_size, 
+                                              change_rate, change_price, high, low, vol, vol_value, last, 
+                                              average_price, taker_fee_rate, maker_fee_rate, taker_coefficient, 
+                                              maker_coefficient
+                                              ) 
+                                              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
                                     )
                                     .bind(&d.symbol)
                                     .bind(&d.symbol_name)
@@ -242,31 +225,31 @@ async fn main() -> Result<(), JobSchedulerError> {
             //     },
             //     Err(e) => return Err(e),
             // }
-            match Job::new_async("* * * * * *", |_, _| {
-                Box::pin(async move {
-                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-                        Ok(client) => match client.api_v1_timestamp().await {
-                            Ok(timestamp) => {
-                                info!("Server timestamp:{}", timestamp);
-                            }
-                            Err(e) => {
-                                error!("Ошибка при выполнении запроса: {}", e)
-                            }
-                        },
-                        Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
-                        }
-                    }
-                })
-            }) {
-                Ok(job) => match s.add(job).await {
-                    Ok(_) => {
-                        info!("Добавили задачу api_v1_timestamp")
-                    }
-                    Err(e) => return Err(e),
-                },
-                Err(e) => return Err(e),
-            }
+            // match Job::new_async("* * * * * *", |_, _| {
+            //     Box::pin(async move {
+            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+            //             Ok(client) => match client.api_v1_timestamp().await {
+            //                 Ok(timestamp) => {
+            //                     info!("Server timestamp:{}", timestamp);
+            //                 }
+            //                 Err(e) => {
+            //                     error!("Ошибка при выполнении запроса: {}", e)
+            //                 }
+            //             },
+            //             Err(e) => {
+            //                 error!("Ошибка при выполнении запроса: {}", e)
+            //             }
+            //         }
+            //     })
+            // }) {
+            //     Ok(job) => match s.add(job).await {
+            //         Ok(_) => {
+            //             info!("Добавили задачу api_v1_timestamp")
+            //         }
+            //         Err(e) => return Err(e),
+            //     },
+            //     Err(e) => return Err(e),
+            // }
 
             match s.start().await {
                 Ok(_) => {}

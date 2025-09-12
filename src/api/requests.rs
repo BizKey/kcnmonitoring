@@ -343,6 +343,7 @@ impl KuCoinClient {
         if let Some(body_data) = &body {
             request_builder = request_builder.json(&body_data);
         }
+
         if authenticated {
             let timestamp = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
