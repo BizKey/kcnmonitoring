@@ -1,0 +1,9 @@
+services:
+  kcnmonitoring:
+    image: ghcr.io/bizkey/kcnmonitoring/kcnmonitoring:latest
+    pull_policy: always
+    container_name: kcnmonitoring
+    restart: unless-stopped
+    network_mode: host  
+    env_file:
+      - .env
