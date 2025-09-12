@@ -1,0 +1,9 @@
+services:
+  kcnmonitoring:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kcnmonitoring
+    restart: unless-stopped
+    env_file:
+      - .env
