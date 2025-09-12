@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use log::{error, info};
-use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, Postgres, QueryBuilder};
 use std::env;
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
@@ -14,6 +14,14 @@ mod api {
 async fn main() -> Result<(), JobSchedulerError> {
     env_logger::init();
     dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .expect("Failed to create pool");
 
     match JobScheduler::new().await {
         Ok(s) => {
@@ -91,51 +99,47 @@ async fn main() -> Result<(), JobSchedulerError> {
             //     Err(e) => return Err(e),
             // };
 
-            match Job::new_async("0 * * * * *", |_, _| {
+            match Job::new_async("0 * * * * *", move |_, _| {
+                let pool = pool.clone();
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v1_market_alltickers().await {
-                            Ok(t) => {
-                                let database_url =
-                                    env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+                            Ok(tickers) => {
+                                let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+                                    "INSERT INTO Ticker (
+                                        symbol, symbol_name, buy, best_bid_size, sell, best_ask_size, 
+                                        change_rate, change_price, high, low, vol, vol_value, last, 
+                                        average_price, taker_fee_rate, maker_fee_rate, taker_coefficient, 
+                                        maker_coefficient
+                                    )",
+                                );
 
-                                let pool = PgPoolOptions::new()
-                                    .max_connections(5)
-                                    .connect(&database_url)
-                                    .await
-                                    .expect("Failed to create pool");
+                                query_builder.push_values(&tickers.ticker, |mut b, d| {
+                                    b.push_bind(&d.symbol)
+                                        .push_bind(&d.symbol_name)
+                                        .push_bind(&d.buy)
+                                        .push_bind(&d.best_bid_size)
+                                        .push_bind(&d.sell)
+                                        .push_bind(&d.best_ask_size)
+                                        .push_bind(&d.change_rate)
+                                        .push_bind(&d.change_price)
+                                        .push_bind(&d.high)
+                                        .push_bind(&d.low)
+                                        .push_bind(&d.vol)
+                                        .push_bind(&d.vol_value)
+                                        .push_bind(&d.last)
+                                        .push_bind(&d.average_price)
+                                        .push_bind(&d.taker_fee_rate)
+                                        .push_bind(&d.maker_fee_rate)
+                                        .push_bind(&d.taker_coefficient)
+                                        .push_bind(&d.maker_coefficient);
+                                });
 
-                                for d in t.ticker.iter() {
-                                    let _ = sqlx::query(
-                                        "INSERT INTO Ticker (
-                                              symbol, symbol_name, buy, best_bid_size, sell, best_ask_size, 
-                                              change_rate, change_price, high, low, vol, vol_value, last, 
-                                              average_price, taker_fee_rate, maker_fee_rate, taker_coefficient, 
-                                              maker_coefficient
-                                              ) 
-                                              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
-                                    )
-                                    .bind(&d.symbol)
-                                    .bind(&d.symbol_name)
-                                    .bind(&d.buy)
-                                    .bind(&d.best_bid_size)
-                                    .bind(&d.sell)
-                                    .bind(&d.best_ask_size)
-                                    .bind(&d.change_rate)
-                                    .bind(&d.change_price)
-                                    .bind(&d.high)
-                                    .bind(&d.low)
-                                    .bind(&d.vol)
-                                    .bind(&d.vol_value)
-                                    .bind(&d.last)
-                                    .bind(&d.average_price)
-                                    .bind(&d.taker_fee_rate)
-                                    .bind(&d.maker_fee_rate)
-                                    .bind(&d.taker_coefficient)
-                                    .bind(&d.maker_coefficient)
-                                    .execute(&pool)
-                                    .await
-                                    .map_err(|e| error!("Database error: {}", e));
+                                match query_builder.build().execute(&pool).await {
+                                    Ok(_) => {
+                                        info!("Success insert {} tickers", tickers.ticker.len())
+                                    }
+                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
                                 }
                             }
                             Err(e) => {
