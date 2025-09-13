@@ -92,9 +92,6 @@ pub struct Symbol {
     #[serde(rename = "quoteCurrency")]
     pub quote_currency: String,
 
-    #[serde(rename = "feeCurrency")]
-    pub fee_currency: String,
-
     pub market: String,
 
     #[serde(rename = "baseMinSize")]
@@ -125,10 +122,13 @@ pub struct Symbol {
     pub min_funds: String,
 
     #[serde(rename = "isMarginEnabled")]
-    pub is_margin_enabled: String,
+    pub is_margin_enabled: bool,
 
     #[serde(rename = "enableTrading")]
-    pub enable_trading: String,
+    pub enable_trading: bool,
+
+    #[serde(rename = "feeCurrency")]
+    pub fee_currency: i16,
 
     #[serde(rename = "makerFeeCoefficient")]
     pub maker_fee_coefficient: String,
@@ -136,10 +136,10 @@ pub struct Symbol {
     #[serde(rename = "takerFeeCoefficient")]
     pub taker_fee_coefficient: String,
 
-    pub st: String,
+    pub st: bool,
 
     #[serde(rename = "callauctionIsEnabled")]
-    pub callauction_is_enabled: String,
+    pub callauction_is_enabled: bool,
 
     #[serde(rename = "callauctionPriceFloor")]
     pub callauction_price_floor: String,
@@ -148,16 +148,16 @@ pub struct Symbol {
     pub callauction_price_ceiling: String,
 
     #[serde(rename = "callauctionFirstStageStartTime")]
-    pub callauction_first_stage_start_time: String,
+    pub callauction_first_stage_start_time: i64,
 
     #[serde(rename = "callauctionSecondStageStartTime")]
-    pub callauction_second_stage_start_time: String,
+    pub callauction_second_stage_start_time: i64,
 
     #[serde(rename = "callauctionThirdStageStartTime")]
-    pub callauction_third_stage_start_time: String,
+    pub callauction_third_stage_start_time: i64,
 
     #[serde(rename = "tradingStartTime")]
-    pub trading_start_time: String,
+    pub trading_start_time: i64,
 }
 
 #[derive(Debug, Deserialize)]
