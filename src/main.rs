@@ -25,6 +25,7 @@ async fn main() -> Result<(), JobSchedulerError> {
 
     let pool_tickers = pool.clone();
     let pool_currency = pool.clone();
+    let pool_symbols = pool.clone();
 
     match JobScheduler::new().await {
         Ok(s) => {
@@ -216,36 +217,80 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Err(e) => return Err(e),
             }
 
-            // match Job::new_async("59 * * * * *", |_, _| {
-            //     Box::pin(async move {
-            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-            //             Ok(client) => match client.api_v2_symbols().await {
-            //                 Ok(t) => {
-            //                     for d in t.iter() {
-            //                         info!(
-            //                             "base_currency:{} name:{} symbol:{}",
-            //                             d.base_currency, d.name, d.symbol
-            //                         );
-            //                     }
-            //                 }
-            //                 Err(e) => {
-            //                     error!("Ошибка при выполнении запроса: {}", e)
-            //                 }
-            //             },
-            //             Err(e) => {
-            //                 error!("Ошибка при выполнении запроса: {}", e)
-            //             }
-            //         };
-            //     })
-            // }) {
-            //     Ok(job) => match s.add(job).await {
-            //         Ok(_) => {
-            //             info!("Добавили задачу api_v2_symbols")
-            //         }
-            //         Err(e) => return Err(e),
-            //     },
-            //     Err(e) => return Err(e),
-            // }
+            match Job::new_async("0 0 * * * *", move |_, _| {
+                let pool = pool_symbols.clone();
+                Box::pin(async move {
+                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                        Ok(client) => match client.api_v2_symbols().await {
+                            Ok(symbols) => {
+                                let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+                                    "INSERT INTO Symbol (
+                                        symbol, name, base_currency, quote_currency, fee_currency, market,
+                                        base_min_size, quote_min_size, base_max_size, quote_max_size, base_increment,
+                                        quote_increment, price_increment, price_limit_rate, min_funds, is_margin_enabled,
+                                        enable_trading, maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled,
+                                        callauction_price_floor, callauction_price_ceiling, callauction_first_stage_start_time,
+                                        callauction_second_stage_start_time, callauction_third_stage_start_time, trading_start_time
+                                    )",
+                                );
+
+                                query_builder.push_values(&symbols, |mut b, d| {
+                                    b.push_bind(&d.symbol)
+                                        .push_bind(&d.name)
+                                        .push_bind(&d.base_currency)
+                                        .push_bind(&d.quote_currency)
+                                        .push_bind(&d.fee_currency)
+                                        .push_bind(&d.market)
+                                        .push_bind(&d.base_min_size)
+                                        .push_bind(&d.quote_min_size)
+                                        .push_bind(&d.base_max_size)
+                                        .push_bind(&d.quote_max_size)
+                                        .push_bind(&d.base_increment)
+                                        .push_bind(&d.quote_increment)
+                                        .push_bind(&d.price_increment)
+                                        .push_bind(&d.price_limit_rate)
+                                        .push_bind(&d.min_funds)
+                                        .push_bind(&d.is_margin_enabled)
+                                        .push_bind(&d.enable_trading)
+                                        .push_bind(&d.maker_fee_coefficient)
+                                        .push_bind(&d.taker_fee_coefficient)
+                                        .push_bind(&d.st)
+                                        .push_bind(&d.callauction_is_enabled)
+                                        .push_bind(&d.callauction_price_floor)
+                                        .push_bind(&d.callauction_price_ceiling)
+                                        .push_bind(&d.callauction_first_stage_start_time)
+                                        .push_bind(&d.callauction_second_stage_start_time)
+                                        .push_bind(&d.callauction_third_stage_start_time)
+                                        .push_bind(&d.trading_start_time);
+                                });
+
+                                match query_builder.build().execute(&pool).await {
+                                    Ok(_) => {
+                                        info!("Success insert {} symbols", symbols.len())
+                                    }
+                                    Err(e) => {
+                                        error!("Error on bulk insert currencies to db: {}", e)
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                error!("Ошибка при выполнении запроса: {}", e)
+                            }
+                        },
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
+                        }
+                    };
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу api_v2_symbols")
+                    }
+                    Err(e) => return Err(e),
+                },
+                Err(e) => return Err(e),
+            }
             // match Job::new_async("* * * * * *", |_, _| {
             //     Box::pin(async move {
             //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
