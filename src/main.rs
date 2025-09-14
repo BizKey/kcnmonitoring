@@ -225,10 +225,10 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(symbols) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO Symbol (
-                                        symbol, name, base_currency, quote_currency, fee_currency, market, fee_category
+                                        symbol, name, base_currency, quote_currency, fee_currency, market, 
                                         base_min_size, quote_min_size, base_max_size, quote_max_size, base_increment,
                                         quote_increment, price_increment, price_limit_rate, min_funds, is_margin_enabled,
-                                        enable_trading, maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled,
+                                        enable_trading, fee_category, maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled,
                                         callauction_price_floor, callauction_price_ceiling, callauction_first_stage_start_time,
                                         callauction_second_stage_start_time, callauction_third_stage_start_time, trading_start_time
                                     )",
@@ -241,7 +241,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.quote_currency)
                                         .push_bind(&d.fee_currency)
                                         .push_bind(&d.market)
-                                        .push_bind(&d.fee_category)
                                         .push_bind(&d.base_min_size)
                                         .push_bind(&d.quote_min_size)
                                         .push_bind(&d.base_max_size)
@@ -253,6 +252,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.min_funds)
                                         .push_bind(&d.is_margin_enabled)
                                         .push_bind(&d.enable_trading)
+                                        .push_bind(&d.fee_category)
                                         .push_bind(&d.maker_fee_coefficient)
                                         .push_bind(&d.taker_fee_coefficient)
                                         .push_bind(&d.st)
