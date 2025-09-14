@@ -225,7 +225,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(symbols) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO Symbol (
-                                        symbol, name, base_currency, quote_currency, fee_currency, market,
+                                        symbol, name, base_currency, quote_currency, fee_currency, market, fee_category
                                         base_min_size, quote_min_size, base_max_size, quote_max_size, base_increment,
                                         quote_increment, price_increment, price_limit_rate, min_funds, is_margin_enabled,
                                         enable_trading, maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled,
@@ -241,6 +241,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.quote_currency)
                                         .push_bind(&d.fee_currency)
                                         .push_bind(&d.market)
+                                        .push_bind(&d.fee_category)
                                         .push_bind(&d.base_min_size)
                                         .push_bind(&d.quote_min_size)
                                         .push_bind(&d.base_max_size)
