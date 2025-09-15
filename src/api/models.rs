@@ -221,9 +221,6 @@ pub struct ApiV3MarginBorrowRateDataItem {
 
 #[derive(Debug, Deserialize)]
 pub struct ApiV3MarginBorrowRateData {
-    #[serde(rename = "vipLevel")]
-    pub vip_level: u8,
-
     pub items: Vec<ApiV3MarginBorrowRateDataItem>,
 }
 
