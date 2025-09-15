@@ -46,7 +46,6 @@ pub struct Ticker {
 
 #[derive(Debug, Deserialize)]
 pub struct TickerData {
-    pub time: u128,
     pub ticker: Vec<Ticker>,
 }
 #[derive(Debug, Deserialize)]

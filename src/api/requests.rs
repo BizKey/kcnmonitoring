@@ -4,7 +4,6 @@ use crate::api::models::{
 };
 use base64::Engine;
 use hmac::{Hmac, Mac};
-use std::time::Duration;
 
 use reqwest::{Client, Response};
 
