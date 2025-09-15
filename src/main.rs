@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{PgPool, Postgres, QueryBuilder};
+use sqlx::{Postgres, QueryBuilder};
 use std::env;
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
@@ -26,82 +26,109 @@ async fn main() -> Result<(), JobSchedulerError> {
     let pool_tickers = pool.clone();
     let pool_currency = pool.clone();
     let pool_symbols = pool.clone();
+    let pool_borrow = pool.clone();
+    let pool_lend = pool.clone();
 
     match JobScheduler::new().await {
         Ok(s) => {
-            // match Job::new_async("59 * * * * *", |_, _| {
-            //     Box::pin(async move {
-            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-            //             Ok(client) => match client.api_v3_project_list().await {
-            //                 Ok(t) => {
-            //                     for d in t.iter() {
-            //                         info!(
-            //                             "currency:{:10}market_interest_rate:{} purchase_enable:{} redeem_enable:{} increment:{} min_purchase_size:{} max_purchase_size:{} interest_increment:{} min_interest_rate:{} max_interest_rate:{} auto_purchase_enable:{}",
-            //                             d.currency,
-            //                             d.market_interest_rate,
-            //                             d.purchase_enable,
-            //                             d.redeem_enable,
-            //                             d.increment,
-            //                             d.min_purchase_size,
-            //                             d.max_purchase_size,
-            //                             d.interest_increment,
-            //                             d.min_interest_rate,
-            //                             d.max_interest_rate,
-            //                             d.auto_purchase_enable,
-            //                         );
-            //                     }
-            //                 }
-            //                 Err(e) => {
-            //                     error!("Ошибка при выполнении запроса: {}", e)
-            //                 }
-            //             },
-            //             Err(e) => {
-            //                 error!("Ошибка при выполнении запроса: {}", e)
-            //             }
-            //         };
-            //     })
-            // }) {
-            //     Ok(job) => match s.add(job).await {
-            //         Ok(_) => {
-            //             info!("Добавили задачу api_v3_project_list")
-            //         }
-            //         Err(e) => return Err(e),
-            //     },
-            //     Err(e) => return Err(e),
-            // };
-            // match Job::new_async("59 * * * * *", |_, _| {
-            //     Box::pin(async move {
-            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-            //             Ok(client) => match client.api_v3_margin_borrowrate().await {
-            //                 Ok(t) => {
-            //                     for d in t.items.iter() {
-            //                         info!(
-            //                             "VIP level:{} currency:{:10}hourly_borrow_rate:{:12}annualized_borrow_rate:{}",
-            //                             t.vip_level,
-            //                             d.currency,
-            //                             d.hourly_borrow_rate,
-            //                             d.annualized_borrow_rate
-            //                         );
-            //                     }
-            //                 }
-            //                 Err(e) => {
-            //                     error!("Ошибка при выполнении запроса: {}", e)
-            //                 }
-            //             },
-            //             Err(e) => {
-            //                 error!("Ошибка при выполнении запроса: {}", e)
-            //             }
-            //         };
-            //     })
-            // }) {
-            //     Ok(job) => match s.add(job).await {
-            //         Ok(_) => {
-            //             info!("Добавили задачу api_v3_margin_borrowrate")
-            //         }
-            //         Err(e) => return Err(e),
-            //     },
-            //     Err(e) => return Err(e),
-            // };
+            match Job::new_async("0 0 * * * *", move |_, _| {
+                let pool = pool_lend.clone();
+                Box::pin(async move {
+                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                        Ok(client) => match client.api_v3_project_list().await {
+                            Ok(lend) => {
+                                let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+                                    "INSERT INTO Lend (
+                                        currency, purchase_enable, redeem_enable, increment, min_purchase_size,
+                                        max_purchase_size, interest_increment, min_interest_rate, market_interest_rate,
+                                        max_interest_rate, auto_purchase_enable
+                                    )",
+                                );
+                                let count_lend = lend.len();
+
+                                query_builder.push_values(lend, |mut b, d| {
+                                    b.push_bind(d.currency)
+                                        .push_bind(d.purchase_enable)
+                                        .push_bind(d.redeem_enable)
+                                        .push_bind(d.increment)
+                                        .push_bind(d.min_purchase_size)
+                                        .push_bind(d.max_purchase_size)
+                                        .push_bind(d.interest_increment)
+                                        .push_bind(d.min_interest_rate)
+                                        .push_bind(d.market_interest_rate)
+                                        .push_bind(d.max_interest_rate)
+                                        .push_bind(d.auto_purchase_enable);
+                                });
+
+                                match query_builder.build().execute(&pool).await {
+                                    Ok(_) => {
+                                        info!("Success insert {} lends", count_lend)
+                                    }
+                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
+                                }
+                            }
+                            Err(e) => {
+                                error!("Ошибка при выполнении запроса: {}", e)
+                            }
+                        },
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
+                        }
+                    };
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу api_v3_project_list")
+                    }
+                    Err(e) => return Err(e),
+                },
+                Err(e) => return Err(e),
+            };
+            match Job::new_async("0 0 * * * *", move |_, _| {
+                let pool = pool_borrow.clone();
+                Box::pin(async move {
+                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                        Ok(client) => match client.api_v3_margin_borrowrate().await {
+                            Ok(borrow) => {
+                                let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+                                    "INSERT INTO Borrow (
+                                        currency, hourly_borrow_rate, annualized_borrow_rate
+                                    )",
+                                );
+                                let count_borrow = borrow.items.len();
+
+                                query_builder.push_values(borrow.items, |mut b, d| {
+                                    b.push_bind(d.currency)
+                                        .push_bind(d.hourly_borrow_rate)
+                                        .push_bind(d.annualized_borrow_rate);
+                                });
+
+                                match query_builder.build().execute(&pool).await {
+                                    Ok(_) => {
+                                        info!("Success insert {} borrow", count_borrow)
+                                    }
+                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
+                                }
+                            }
+                            Err(e) => {
+                                error!("Ошибка при выполнении запроса: {}", e)
+                            }
+                        },
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
+                        }
+                    };
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу api_v3_margin_borrowrate")
+                    }
+                    Err(e) => return Err(e),
+                },
+                Err(e) => return Err(e),
+            };
 
             match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool_tickers.clone();
@@ -173,7 +200,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(currencies) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO Currency (
-                                        currency, name, full_name, precision, confirms, 
+                                        currency, name, full_name, precision, confirms,
                                         contract_address, is_margin_enabled, is_debit_enabled
                                     )",
                                 );
@@ -225,7 +252,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(symbols) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO Symbol (
-                                        symbol, name, base_currency, quote_currency, fee_currency, market, 
+                                        symbol, name, base_currency, quote_currency, fee_currency, market,
                                         base_min_size, quote_min_size, base_max_size, quote_max_size, base_increment,
                                         quote_increment, price_increment, price_limit_rate, min_funds, is_margin_enabled,
                                         enable_trading, fee_category, maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled,
@@ -292,31 +319,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                 },
                 Err(e) => return Err(e),
             }
-            // match Job::new_async("* * * * * *", |_, _| {
-            //     Box::pin(async move {
-            //         match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-            //             Ok(client) => match client.api_v1_timestamp().await {
-            //                 Ok(timestamp) => {
-            //                     info!("Server timestamp:{}", timestamp);
-            //                 }
-            //                 Err(e) => {
-            //                     error!("Ошибка при выполнении запроса: {}", e)
-            //                 }
-            //             },
-            //             Err(e) => {
-            //                 error!("Ошибка при выполнении запроса: {}", e)
-            //             }
-            //         }
-            //     })
-            // }) {
-            //     Ok(job) => match s.add(job).await {
-            //         Ok(_) => {
-            //             info!("Добавили задачу api_v1_timestamp")
-            //         }
-            //         Err(e) => return Err(e),
-            //     },
-            //     Err(e) => return Err(e),
-            // }
 
             match s.start().await {
                 Ok(_) => {}

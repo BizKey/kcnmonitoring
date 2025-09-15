@@ -46,7 +46,6 @@ pub struct Ticker {
 
 #[derive(Debug, Deserialize)]
 pub struct TickerData {
-    pub time: u128,
     pub ticker: Vec<Ticker>,
 }
 #[derive(Debug, Deserialize)]
@@ -210,12 +209,6 @@ pub struct ListLoanMarket {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ApiV1Timestamp {
-    pub code: String,
-    pub data: u64,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct ApiV3MarginBorrowRateDataItem {
     pub currency: String,
 
@@ -228,9 +221,6 @@ pub struct ApiV3MarginBorrowRateDataItem {
 
 #[derive(Debug, Deserialize)]
 pub struct ApiV3MarginBorrowRateData {
-    #[serde(rename = "vipLevel")]
-    pub vip_level: u8,
-
     pub items: Vec<ApiV3MarginBorrowRateDataItem>,
 }
 
