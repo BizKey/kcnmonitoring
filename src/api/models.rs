@@ -210,12 +210,6 @@ pub struct ListLoanMarket {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ApiV1Timestamp {
-    pub code: String,
-    pub data: u64,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct ApiV3MarginBorrowRateDataItem {
     pub currency: String,
 

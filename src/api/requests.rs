@@ -1,6 +1,6 @@
 use crate::api::models::{
-    ApiV1Timestamp, ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Currencies, ListCurrencies,
-    ListLoanMarket, ListSymbols, ListTickers, LoanMarket, Symbol, TickerData,
+    ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Currencies, ListCurrencies, ListLoanMarket,
+    ListSymbols, ListTickers, LoanMarket, Symbol, TickerData,
 };
 use base64::Engine;
 use hmac::{Hmac, Mac};
