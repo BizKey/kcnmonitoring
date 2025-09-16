@@ -97,7 +97,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     )",
                                 );
                                 let count_borrow = borrow.items.len();
-                                info!("Success insert {} borrow", count_borrow);
 
                                 query_builder.push_values(borrow.items, |mut b, d| {
                                     b.push_bind(d.currency)
