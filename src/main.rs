@@ -15,24 +15,24 @@ async fn main() -> Result<(), JobSchedulerError> {
     env_logger::init();
     dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    // let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-        .expect("Failed to create pool");
+    // let pool = PgPoolOptions::new()
+    //     .max_connections(5)
+    //     .connect(&database_url)
+    //     .await
+    //     .expect("Failed to create pool");
 
-    let pool_tickers = pool.clone();
-    let pool_currency = pool.clone();
-    let pool_symbols = pool.clone();
-    let pool_borrow = pool.clone();
-    let pool_lend = pool.clone();
+    // let pool_tickers = pool.clone();
+    // let pool_currency = pool.clone();
+    // let pool_symbols = pool.clone();
+    // let pool_borrow = pool.clone();
+    // let pool_lend = pool.clone();
 
     match JobScheduler::new().await {
         Ok(s) => {
             match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_lend.clone();
+                // let pool = pool_lend.clone();
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_project_list().await {
@@ -60,12 +60,12 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(d.auto_purchase_enable);
                                 });
 
-                                match query_builder.build().execute(&pool).await {
-                                    Ok(_) => {
-                                        info!("Success insert {} lends", count_lend)
-                                    }
-                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
-                                }
+                                // match query_builder.build().execute(&pool).await {
+                                //     Ok(_) => {
+                                //         info!("Success insert {} lends", count_lend)
+                                //     }
+                                //     Err(e) => error!("Error on bulk insert tickers to db: {}", e),
+                                // }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
@@ -85,8 +85,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                 },
                 Err(e) => return Err(e),
             };
-            match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_borrow.clone();
+            match Job::new_async("* * * * * *", move |_, _| {
+                // let pool = pool_borrow.clone();
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_margin_borrowrate().await {
@@ -104,12 +104,12 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(d.annualized_borrow_rate);
                                 });
 
-                                match query_builder.build().execute(&pool).await {
-                                    Ok(_) => {
-                                        info!("Success insert {} borrow", count_borrow)
-                                    }
-                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
-                                }
+                                // match query_builder.build().execute(&pool).await {
+                                //     Ok(_) => {
+                                //         info!("Success insert {} borrow", count_borrow)
+                                //     }
+                                //     Err(e) => error!("Error on bulk insert tickers to db: {}", e),
+                                // }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
@@ -131,7 +131,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             };
 
             match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_tickers.clone();
+                // let pool = pool_tickers.clone();
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v1_market_alltickers().await {
@@ -166,12 +166,12 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.maker_coefficient);
                                 });
 
-                                match query_builder.build().execute(&pool).await {
-                                    Ok(_) => {
-                                        info!("Success insert {} tickers", tickers.ticker.len())
-                                    }
-                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
-                                }
+                                // match query_builder.build().execute(&pool).await {
+                                //     Ok(_) => {
+                                //         info!("Success insert {} tickers", tickers.ticker.len())
+                                //     }
+                                //     Err(e) => error!("Error on bulk insert tickers to db: {}", e),
+                                // }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
@@ -193,7 +193,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             };
 
             match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_currency.clone();
+                // let pool = pool_currency.clone();
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_currencies().await {
@@ -216,14 +216,14 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.is_debit_enabled);
                                 });
 
-                                match query_builder.build().execute(&pool).await {
-                                    Ok(_) => {
-                                        info!("Success insert {} currencies", currencies.len())
-                                    }
-                                    Err(e) => {
-                                        error!("Error on bulk insert currencies to db: {}", e)
-                                    }
-                                }
+                                // match query_builder.build().execute(&pool).await {
+                                //     Ok(_) => {
+                                //         info!("Success insert {} currencies", currencies.len())
+                                //     }
+                                //     Err(e) => {
+                                //         error!("Error on bulk insert currencies to db: {}", e)
+                                //     }
+                                // }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
@@ -245,7 +245,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             }
 
             match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_symbols.clone();
+                // let pool = pool_symbols.clone();
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v2_symbols().await {
@@ -292,14 +292,14 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.trading_start_time);
                                 });
 
-                                match query_builder.build().execute(&pool).await {
-                                    Ok(_) => {
-                                        info!("Success insert {} symbols", symbols.len())
-                                    }
-                                    Err(e) => {
-                                        error!("Error on bulk insert currencies to db: {}", e)
-                                    }
-                                }
+                                // match query_builder.build().execute(&pool).await {
+                                //     Ok(_) => {
+                                //         info!("Success insert {} symbols", symbols.len())
+                                //     }
+                                //     Err(e) => {
+                                //         error!("Error on bulk insert currencies to db: {}", e)
+                                //     }
+                                // }
                             }
                             Err(e) => {
                                 error!("Ошибка при выполнении запроса: {}", e)
