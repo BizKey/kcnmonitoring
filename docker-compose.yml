@@ -4,10 +4,6 @@ services:
     pull_policy: always
     container_name: kcnmonitoring
     restart: unless-stopped
+    network_mode: host  
     env_file:
       - .env
-    networks:
-      - bridge
-networks:
-  bridge:
-    driver: bridge
