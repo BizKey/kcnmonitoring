@@ -1,6 +1,6 @@
 use crate::api::models::{
-    ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Currencies, ListCurrencies, ListLoanMarket,
-    ListSymbols, ListTickers, LoanMarket, Symbol, TickerData,
+    ApiV3MarginBorrowRate, ApiV3MarginBorrowRateData, Candle, Currencies, ListCandle,
+    ListCurrencies, ListLoanMarket, ListSymbols, ListTickers, LoanMarket, Symbol, TickerData,
 };
 use base64::Engine;
 use hmac::{Hmac, Mac};
@@ -224,6 +224,60 @@ impl KuCoinClient {
             Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
     }
+    pub async fn api_v1_market_candles(
+        &self,
+        symbol_name: &String,
+        type_candles: &String,
+    ) -> Result<Vec<Candle>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut query_params = HashMap::new();
+
+        query_params.insert("symbol", symbol_name.as_str());
+        query_params.insert("type", type_candles.as_str());
+
+        return match self
+            .make_request(
+                reqwest::Method::GET,
+                "/api/v1/market/candles",
+                Some(query_params),
+                None,
+                false,
+            )
+            .await
+        {
+            Ok(response) => match response.status().as_str() {
+                "200" => match response.text().await {
+                    Ok(text) => match serde_json::from_str::<ListCandle>(&text) {
+                        Ok(r) => match r.code.as_str() {
+                            "200000" => {
+                                let candles = r
+                                    .into_candles()
+                                    .map_err(|e| format!("Failed to parse candles: {}", e))?;
+                                // Теперь у вас есть Vec<Candle>
+                                Ok(candles)
+                            }
+                            _ => Err(format!("API error: code {}", r.code).into()),
+                        },
+                        Err(e) => Err(format!(
+                            "Error JSON deserialize:'{}' with data: '{}'",
+                            e, text
+                        )
+                        .into()),
+                    },
+                    Err(e) => {
+                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
+                    }
+                },
+                status => match response.text().await {
+                    Ok(text) => {
+                        Err(format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into())
+                    }
+                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
+                },
+            },
+            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
+        };
+    }
+
     pub async fn api_v2_symbols(
         &self,
     ) -> Result<Vec<Symbol>, Box<dyn std::error::Error + Send + Sync>> {

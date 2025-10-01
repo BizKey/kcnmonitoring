@@ -229,3 +229,41 @@ pub struct ApiV3MarginBorrowRate {
     pub code: String,
     pub data: ApiV3MarginBorrowRateData,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct Candle {
+    pub timestamp: String,
+    pub open: String,
+    pub high: String,
+    pub low: String,
+    pub close: String,
+    pub volume: String,
+    pub quote_volume: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListCandle {
+    pub code: String,
+    pub data: Vec<Vec<String>>,
+}
+impl ListCandle {
+    pub fn into_candles(self) -> Result<Vec<Candle>, &'static str> {
+        self.data
+            .into_iter()
+            .map(|inner| {
+                if inner.len() != 7 {
+                    return Err("Invalid candle data length");
+                }
+                Ok(Candle {
+                    timestamp: inner[0].clone(),
+                    open: inner[1].clone(),
+                    high: inner[2].clone(),
+                    low: inner[3].clone(),
+                    close: inner[4].clone(),
+                    volume: inner[5].clone(),
+                    quote_volume: inner[6].clone(),
+                })
+            })
+            .collect()
+    }
+}
