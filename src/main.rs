@@ -31,6 +31,41 @@ async fn main() -> Result<(), JobSchedulerError> {
 
     match JobScheduler::new().await {
         Ok(s) => {
+            match Job::new_async("0 * * * * *", move |_, _| {
+                Box::pin(async move {
+                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                        Ok(client) => {
+                            match client
+                                .api_v1_market_candles(
+                                    String::from("ADA-USDT"),
+                                    String::from("1hour"),
+                                )
+                                .await
+                            {
+                                Ok(candle) => {
+                                    for i in candle.iter() {
+                                        println!("{:.?}", i);
+                                    }
+                                }
+                                Err(e) => {
+                                    error!("Ошибка при выполнении запроса: {}", e)
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            error!("Ошибка при выполнении запроса: {}", e)
+                        }
+                    };
+                })
+            }) {
+                Ok(job) => match s.add(job).await {
+                    Ok(_) => {
+                        info!("Добавили задачу api_v3_project_list")
+                    }
+                    Err(e) => return Err(e),
+                },
+                Err(e) => return Err(e),
+            };
             match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool_lend.clone();
                 Box::pin(async move {
