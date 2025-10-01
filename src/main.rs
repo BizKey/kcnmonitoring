@@ -39,6 +39,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => {
                             let symbol = String::from("ADA-USDT");
                             let type_candle = String::from("1hour");
+                            let exchange = String::from("kucoin");
                             match client
                                 .api_v1_market_candles(symbol.clone(), type_candle.clone())
                                 .await
@@ -60,7 +61,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     let count_candle = candle.len();
 
                                     query_builder.push_values(candle, |mut b, d| {
-                                        b.push_bind("kucoin")
+                                        b.push_bind(exchange.clone())
                                             .push_bind(symbol.clone())
                                             .push_bind(type_candle.clone())
                                             .push_bind(d.timestamp)
