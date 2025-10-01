@@ -40,6 +40,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             let symbol = String::from("ADA-USDT");
                             let type_candle = String::from("1hour");
                             let exchange = String::from("kucoin");
+
                             match client
                                 .api_v1_market_candles(symbol.clone(), type_candle.clone())
                                 .await
@@ -47,9 +48,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 Ok(candle) => {
                                     let mut query_builder: QueryBuilder<Postgres> =
                                         QueryBuilder::new(
-                                            "INSERT INTO candle (exchange, symbol, \"interval\", \"timestamp\", open, high, low, close, volume, quote_volume) 
-                                                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                                                   ON CONFLICT (exchange, symbol, \"interval\", \"timestamp\")
+                                            "INSERT INTO candle (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume)
+                                                   ON CONFLICT (exchange, symbol, interval, timestamp)
                                                    DO UPDATE SET
                                                         open = EXCLUDED.open,
                                                         high = EXCLUDED.high,
@@ -61,9 +61,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     let count_candle = candle.len();
 
                                     query_builder.push_values(candle, |mut b, d| {
-                                        b.push_bind(exchange.clone())
-                                            .push_bind(symbol.clone())
-                                            .push_bind(type_candle.clone())
+                                        b.push_bind(&exchange)
+                                            .push_bind(&symbol)
+                                            .push_bind(&type_candle)
                                             .push_bind(d.timestamp)
                                             .push_bind(d.open)
                                             .push_bind(d.high)
@@ -111,11 +111,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v3_project_list().await {
                             Ok(lend) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO Lend (
-                                        currency, purchase_enable, redeem_enable, increment, min_purchase_size,
-                                        max_purchase_size, interest_increment, min_interest_rate, market_interest_rate,
-                                        max_interest_rate, auto_purchase_enable
-                                    )",
+                                    "INSERT INTO lend (currency, purchase_enable, redeem_enable, 
+                                    increment, min_purchase_size, max_purchase_size, interest_increment, 
+                                    min_interest_rate, market_interest_rate, max_interest_rate, auto_purchase_enable)",
                                 );
                                 let count_lend = lend.len();
 
@@ -165,9 +163,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v3_margin_borrowrate().await {
                             Ok(borrow) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO Borrow (
-                                        currency, hourly_borrow_rate, annualized_borrow_rate
-                                    )",
+                                    "INSERT INTO borrow (currency, hourly_borrow_rate, annualized_borrow_rate)",
                                 );
                                 let count_borrow = borrow.items.len();
 
@@ -210,12 +206,10 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v1_market_alltickers().await {
                             Ok(tickers) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO Ticker (
-                                        symbol, symbol_name, buy, best_bid_size, sell, best_ask_size,
-                                        change_rate, change_price, high, low, vol, vol_value, last,
-                                        average_price, taker_fee_rate, maker_fee_rate, taker_coefficient,
-                                        maker_coefficient
-                                    )",
+                                    "INSERT INTO ticker (symbol, symbol_name, buy, best_bid_size, 
+                                    sell, best_ask_size, change_rate, change_price, high, low, vol, 
+                                    vol_value, last, average_price, taker_fee_rate, maker_fee_rate, 
+                                    taker_coefficient, maker_coefficient)",
                                 );
 
                                 query_builder.push_values(&tickers.ticker, |mut b, d| {
@@ -272,10 +266,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v3_currencies().await {
                             Ok(currencies) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO Currency (
-                                        currency, name, full_name, precision, confirms,
-                                        contract_address, is_margin_enabled, is_debit_enabled
-                                    )",
+                                    "INSERT INTO currency (currency, name, full_name, precision, 
+                                    confirms, contract_address, is_margin_enabled, is_debit_enabled)",
                                 );
 
                                 query_builder.push_values(&currencies, |mut b, d| {
@@ -324,14 +316,14 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v2_symbols().await {
                             Ok(symbols) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO Symbol (
-                                        symbol, name, base_currency, quote_currency, fee_currency, market,
-                                        base_min_size, quote_min_size, base_max_size, quote_max_size, base_increment,
-                                        quote_increment, price_increment, price_limit_rate, min_funds, is_margin_enabled,
-                                        enable_trading, fee_category, maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled,
-                                        callauction_price_floor, callauction_price_ceiling, callauction_first_stage_start_time,
-                                        callauction_second_stage_start_time, callauction_third_stage_start_time, trading_start_time
-                                    )",
+                                    "INSERT INTO symbol (symbol, name, base_currency, quote_currency, 
+                                    fee_currency, market, base_min_size, quote_min_size, base_max_size, 
+                                    quote_max_size, base_increment, quote_increment, price_increment, 
+                                    price_limit_rate, min_funds, is_margin_enabled, enable_trading, 
+                                    fee_category, maker_fee_coefficient, taker_fee_coefficient, st, 
+                                    callauction_is_enabled, callauction_price_floor, callauction_price_ceiling, 
+                                    callauction_first_stage_start_time, callauction_second_stage_start_time, 
+                                    callauction_third_stage_start_time, trading_start_time)",
                                 );
 
                                 query_builder.push_values(&symbols, |mut b, d| {
