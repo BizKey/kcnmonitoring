@@ -43,9 +43,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 Ok(candle) => {
                                     let mut query_builder: QueryBuilder<Postgres> =
                                         QueryBuilder::new(
-                                            "INSERT INTO Candle (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) 
+                                            "INSERT INTO Candle (exchange, symbol, \"interval\", \"timestamp\", open, high, low, close, volume, quote_volume) 
                                                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                                                   ON CONFLICT (exchange, symbol, interval, timestamp)
+                                                   ON CONFLICT (exchange, symbol, \"interval\", \"timestamp\")
                                                    DO UPDATE SET
                                                         open = EXCLUDED.open,
                                                         high = EXCLUDED.high,
@@ -74,7 +74,10 @@ async fn main() -> Result<(), JobSchedulerError> {
                                             info!("Success insert/update {} candles", count_candle)
                                         }
                                         Err(e) => {
-                                            error!("Error on bulk insert/update candles to db: {}", e)
+                                            error!(
+                                                "Error on bulk insert/update candles to db: {}",
+                                                e
+                                            )
                                         }
                                     }
                                 }
