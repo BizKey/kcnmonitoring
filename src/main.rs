@@ -39,11 +39,14 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => {
                             let symbol = String::from("ADA-USDT");
                             let type_candle = String::from("1hour");
-                            match client.api_v1_market_candles(&symbol, &type_candle).await {
+                            match client
+                                .api_v1_market_candles(symbol.clone(), type_candle.clone())
+                                .await
+                            {
                                 Ok(candle) => {
                                     let mut query_builder: QueryBuilder<Postgres> =
                                         QueryBuilder::new(
-                                            "INSERT INTO Candle (exchange, symbol, \"interval\", \"timestamp\", open, high, low, close, volume, quote_volume) 
+                                            "INSERT INTO candle (exchange, symbol, \"interval\", \"timestamp\", open, high, low, close, volume, quote_volume) 
                                                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                                                    ON CONFLICT (exchange, symbol, \"interval\", \"timestamp\")
                                                    DO UPDATE SET
@@ -58,8 +61,8 @@ async fn main() -> Result<(), JobSchedulerError> {
 
                                     query_builder.push_values(candle, |mut b, d| {
                                         b.push_bind("kucoin")
-                                            .push_bind(&symbol)
-                                            .push_bind(&type_candle)
+                                            .push_bind(symbol.clone())
+                                            .push_bind(type_candle.clone())
                                             .push_bind(d.timestamp)
                                             .push_bind(d.open)
                                             .push_bind(d.high)
