@@ -257,9 +257,9 @@ impl ListCandle {
                 Ok(Candle {
                     timestamp: inner[0].clone(),
                     open: inner[1].clone(),
-                    high: inner[2].clone(),
-                    low: inner[3].clone(),
-                    close: inner[4].clone(),
+                    close: inner[2].clone(),
+                    high: inner[3].clone(),
+                    low: inner[4].clone(),
                     volume: inner[5].clone(),
                     quote_volume: inner[6].clone(),
                 })
