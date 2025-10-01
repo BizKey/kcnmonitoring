@@ -45,22 +45,14 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 .api_v1_market_candles(symbol.clone(), type_candle.clone())
                                 .await
                             {
-                                Ok(candle) => {
+                                Ok(candles) => {
+                                    let count_candles = candles.len();
                                     let mut query_builder: QueryBuilder<Postgres> =
                                         QueryBuilder::new(
-                                            "INSERT INTO candle (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume)
-                                                   ON CONFLICT (exchange, symbol, interval, timestamp)
-                                                   DO UPDATE SET
-                                                        open = EXCLUDED.open,
-                                                        high = EXCLUDED.high,
-                                                        low = EXCLUDED.low,
-                                                        close = EXCLUDED.close,
-                                                        volume = EXCLUDED.volume,
-                                                        quote_volume = EXCLUDED.quote_volume",
+                                            "INSERT INTO candle (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
                                         );
-                                    let count_candle = candle.len();
 
-                                    query_builder.push_values(candle, |mut b, d| {
+                                    query_builder.push_values(candles, |mut b, d| {
                                         b.push_bind(&exchange)
                                             .push_bind(&symbol)
                                             .push_bind(&type_candle)
@@ -73,9 +65,20 @@ async fn main() -> Result<(), JobSchedulerError> {
                                             .push_bind(d.quote_volume);
                                     });
 
+                                    query_builder.push(
+                                        " ON CONFLICT (exchange, symbol, interval, timestamp)
+                                                DO UPDATE SET
+                                                    open = EXCLUDED.open,
+                                                    high = EXCLUDED.high,
+                                                    low = EXCLUDED.low,
+                                                    close = EXCLUDED.close,
+                                                    volume = EXCLUDED.volume,
+                                                    quote_volume = EXCLUDED.quote_volume",
+                                    );
+
                                     match query_builder.build().execute(&pool).await {
                                         Ok(_) => {
-                                            info!("Success insert/update {} candles", count_candle)
+                                            info!("Success insert/update {} candles", count_candles)
                                         }
                                         Err(e) => {
                                             error!(
