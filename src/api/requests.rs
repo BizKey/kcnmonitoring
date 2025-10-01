@@ -226,8 +226,8 @@ impl KuCoinClient {
     }
     pub async fn api_v1_market_candles(
         &self,
-        symbol_name: String,
-        type_candles: String,
+        symbol_name: &String,
+        type_candles: &String,
     ) -> Result<Vec<Candle>, Box<dyn std::error::Error + Send + Sync>> {
         let mut query_params = HashMap::new();
 

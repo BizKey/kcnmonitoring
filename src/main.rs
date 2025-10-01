@@ -28,23 +28,54 @@ async fn main() -> Result<(), JobSchedulerError> {
     let pool_symbols = pool.clone();
     let pool_borrow = pool.clone();
     let pool_lend = pool.clone();
+    let pool_candle = pool.clone();
 
     match JobScheduler::new().await {
         Ok(s) => {
             match Job::new_async("0 * * * * *", move |_, _| {
+                let pool = pool_candle.clone();
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => {
-                            match client
-                                .api_v1_market_candles(
-                                    String::from("ADA-USDT"),
-                                    String::from("1hour"),
-                                )
-                                .await
-                            {
+                            let symbol = String::from("ADA-USDT");
+                            let type_candle = String::from("1hour");
+                            match client.api_v1_market_candles(&symbol, &type_candle).await {
                                 Ok(candle) => {
-                                    for i in candle.iter() {
-                                        println!("{:.?}", i);
+                                    let mut query_builder: QueryBuilder<Postgres> =
+                                        QueryBuilder::new(
+                                            "INSERT INTO Candle (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) 
+                                                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                                                   ON CONFLICT (exchange, symbol, interval, timestamp)
+                                                   DO UPDATE SET
+                                                        open = EXCLUDED.open,
+                                                        high = EXCLUDED.high,
+                                                        low = EXCLUDED.low,
+                                                        close = EXCLUDED.close,
+                                                        volume = EXCLUDED.volume,
+                                                        quote_volume = EXCLUDED.quote_volume",
+                                        );
+                                    let count_candle = candle.len();
+
+                                    query_builder.push_values(candle, |mut b, d| {
+                                        b.push_bind("kucoin")
+                                            .push_bind(&symbol)
+                                            .push_bind(&type_candle)
+                                            .push_bind(d.timestamp)
+                                            .push_bind(d.open)
+                                            .push_bind(d.high)
+                                            .push_bind(d.low)
+                                            .push_bind(d.close)
+                                            .push_bind(d.volume)
+                                            .push_bind(d.quote_volume);
+                                    });
+
+                                    match query_builder.build().execute(&pool).await {
+                                        Ok(_) => {
+                                            info!("Success insert/update {} candles", count_candle)
+                                        }
+                                        Err(e) => {
+                                            error!("Error on bulk insert/update candles to db: {}", e)
+                                        }
                                     }
                                 }
                                 Err(e) => {
