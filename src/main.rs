@@ -115,9 +115,10 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v3_project_list().await {
                             Ok(lend) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO lend (currency, purchase_enable, redeem_enable, 
-                                    increment, min_purchase_size, max_purchase_size, interest_increment, 
-                                    min_interest_rate, market_interest_rate, max_interest_rate, auto_purchase_enable)",
+                                    "INSERT INTO lend 
+                                    (currency, purchase_enable, redeem_enable, increment, min_purchase_size, 
+                                    max_purchase_size, interest_increment, min_interest_rate, market_interest_rate, 
+                                    max_interest_rate, auto_purchase_enable)",
                                 );
                                 let count_lend = lend.len();
 
@@ -167,7 +168,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v3_margin_borrowrate().await {
                             Ok(borrow) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO borrow (currency, hourly_borrow_rate, annualized_borrow_rate)",
+                                    "INSERT INTO borrow 
+                                    (currency, hourly_borrow_rate, annualized_borrow_rate)",
                                 );
                                 let count_borrow = borrow.items.len();
 
@@ -210,10 +212,11 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v1_market_alltickers().await {
                             Ok(tickers) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO ticker (symbol, symbol_name, buy, best_bid_size, 
-                                    sell, best_ask_size, change_rate, change_price, high, low, vol, 
-                                    vol_value, last, average_price, taker_fee_rate, maker_fee_rate, 
-                                    taker_coefficient, maker_coefficient)",
+                                    "INSERT INTO ticker 
+                                    (symbol, symbol_name, buy, best_bid_size, sell, best_ask_size, 
+                                    change_rate, change_price, high, low, vol, vol_value, last, 
+                                    average_price, taker_fee_rate, maker_fee_rate, taker_coefficient, 
+                                    maker_coefficient)",
                                 );
 
                                 query_builder.push_values(&tickers.ticker, |mut b, d| {
@@ -270,8 +273,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v3_currencies().await {
                             Ok(currencies) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO currency (currency, name, full_name, precision, 
-                                    confirms, contract_address, is_margin_enabled, is_debit_enabled)",
+                                    "INSERT INTO currency 
+                                    (currency, name, full_name, precision, confirms, contract_address, 
+                                    is_margin_enabled, is_debit_enabled)",
                                 );
 
                                 query_builder.push_values(&currencies, |mut b, d| {
@@ -320,12 +324,13 @@ async fn main() -> Result<(), JobSchedulerError> {
                         Ok(client) => match client.api_v2_symbols().await {
                             Ok(symbols) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO symbol (symbol, name, base_currency, quote_currency, 
-                                    fee_currency, market, base_min_size, quote_min_size, base_max_size, 
-                                    quote_max_size, base_increment, quote_increment, price_increment, 
-                                    price_limit_rate, min_funds, is_margin_enabled, enable_trading, 
-                                    fee_category, maker_fee_coefficient, taker_fee_coefficient, st, 
-                                    callauction_is_enabled, callauction_price_floor, callauction_price_ceiling, 
+                                    "INSERT INTO symbol 
+                                    (symbol, name, base_currency, quote_currency, fee_currency, market, 
+                                    base_min_size, quote_min_size, base_max_size, quote_max_size, 
+                                    base_increment, quote_increment, price_increment, price_limit_rate, 
+                                    min_funds, is_margin_enabled, enable_trading, fee_category, 
+                                    maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled, 
+                                    callauction_price_floor, callauction_price_ceiling, 
                                     callauction_first_stage_start_time, callauction_second_stage_start_time, 
                                     callauction_third_stage_start_time, trading_start_time)",
                                 );
