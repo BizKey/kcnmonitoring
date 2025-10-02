@@ -155,6 +155,21 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.auto_purchase_enable);
                                 });
 
+                                query_builder.push(
+                                        " ON CONFLICT (exchange, timestamp, currency)
+                                                DO UPDATE SET
+                                                    purchase_enable = EXCLUDED.purchase_enable,
+                                                    redeem_enable = EXCLUDED.redeem_enable,
+                                                    increment = EXCLUDED.increment,
+                                                    min_purchase_size = EXCLUDED.min_purchase_size,
+                                                    max_purchase_size = EXCLUDED.max_purchase_size,
+                                                    interest_increment = EXCLUDED.interest_increment,
+                                                    min_interest_rate = EXCLUDED.min_interest_rate,
+                                                    market_interest_rate = EXCLUDED.market_interest_rate,
+                                                    max_interest_rate = EXCLUDED.max_interest_rate,
+                                                    auto_purchase_enable = EXCLUDED.auto_purchase_enable",
+                                    );
+
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
                                         info!("Success insert {} lends", count_lend)
@@ -201,6 +216,13 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.hourly_borrow_rate)
                                         .push_bind(&d.annualized_borrow_rate);
                                 });
+
+                                query_builder.push(
+                                        " ON CONFLICT (exchange, timestamp, currency)
+                                                DO UPDATE SET
+                                                    hourly_borrow_rate = EXCLUDED.hourly_borrow_rate,
+                                                    annualized_borrow_rate = EXCLUDED.annualized_borrow_rate",
+                                    );
 
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
