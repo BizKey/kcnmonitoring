@@ -1,3 +1,4 @@
+use chrono::{NaiveDateTime, Timelike, Utc};
 use dotenv::dotenv;
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
@@ -8,6 +9,19 @@ use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 mod api {
     pub mod models;
     pub mod requests;
+}
+
+fn get_timestamp() -> Result<String, Box<dyn std::error::Error>> {
+    let now = Utc::now();
+
+    Ok(now
+        .date_naive()
+        .and_hms_opt(now.hour(), 0, 0)
+        .expect("Invalid time")
+        .and_local_timezone(Utc)
+        .unwrap()
+        .timestamp()
+        .to_string())
 }
 
 #[tokio::main]
@@ -115,6 +129,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_project_list().await {
                             Ok(lend) => {
+                                let timestamp = get_timestamp().unwrap();
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO lend 
                                     (exchange, timestamp, currency, purchase_enable, redeem_enable, increment, 
@@ -126,6 +141,7 @@ async fn main() -> Result<(), JobSchedulerError> {
 
                                 query_builder.push_values(&lend, |mut b, d| {
                                     b.push_bind(&exchange)
+                                        .push_bind(&timestamp)
                                         .push_bind(&d.currency)
                                         .push_bind(&d.purchase_enable)
                                         .push_bind(&d.redeem_enable)
@@ -171,6 +187,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_margin_borrowrate().await {
                             Ok(borrow) => {
+                                let timestamp = get_timestamp().unwrap();
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO borrow 
                                     (exchange, timestamp, currency, hourly_borrow_rate, annualized_borrow_rate)",
@@ -179,6 +196,7 @@ async fn main() -> Result<(), JobSchedulerError> {
 
                                 query_builder.push_values(&borrow.items, |mut b, d| {
                                     b.push_bind(&exchange)
+                                        .push_bind(&timestamp)
                                         .push_bind(&d.currency)
                                         .push_bind(&d.hourly_borrow_rate)
                                         .push_bind(&d.annualized_borrow_rate);
@@ -295,7 +313,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 });
 
                                 query_builder.push(
-                                        " ON CONFLICT (exchange, currency)
+                                    " ON CONFLICT (exchange, currency)
                                                 DO UPDATE SET
                                                     name = EXCLUDED.name,
                                                     full_name = EXCLUDED.full_name,
@@ -304,7 +322,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     contract_address = EXCLUDED.contract_address,
                                                     is_margin_enabled = EXCLUDED.is_margin_enabled,
                                                     is_debit_enabled = EXCLUDED.is_debit_enabled",
-                                    );
+                                );
 
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
