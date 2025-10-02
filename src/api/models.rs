@@ -6,30 +6,6 @@ pub struct Ticker {
 
     #[serde(rename = "symbolName")]
     pub symbol_name: String,
-    pub buy: Option<String>,
-
-    #[serde(rename = "bestBidSize")]
-    pub best_bid_size: Option<String>,
-    pub sell: Option<String>,
-
-    #[serde(rename = "bestAskSize")]
-    pub best_ask_size: Option<String>,
-
-    #[serde(rename = "changeRate")]
-    pub change_rate: Option<String>,
-
-    #[serde(rename = "changePrice")]
-    pub change_price: Option<String>,
-    pub high: Option<String>,
-    pub low: Option<String>,
-    pub vol: Option<String>,
-
-    #[serde(rename = "volValue")]
-    pub vol_value: String,
-    pub last: Option<String>,
-
-    #[serde(rename = "averagePrice")]
-    pub average_price: Option<String>,
 
     #[serde(rename = "takerFeeRate")]
     pub taker_fee_rate: String,
