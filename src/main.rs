@@ -67,7 +67,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     });
 
                                     query_builder.push(
-                                        " ON CONFLICT (exchange, symbol, interval, timestamp)                                                
+                                        " ON CONFLICT (exchange, symbol, interval, timestamp)
                                                 DO UPDATE SET
                                                     open = EXCLUDED.open,
                                                     high = EXCLUDED.high,
@@ -295,7 +295,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 });
 
                                 query_builder.push(
-                                        " ON CONFLICT (exchange, currency)                                                
+                                        " ON CONFLICT (exchange, currency)
                                                 DO UPDATE SET
                                                     name = EXCLUDED.name,
                                                     full_name = EXCLUDED.full_name,
@@ -386,7 +386,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 });
 
                                 query_builder.push(
-                                        " ON CONFLICT (exchange, symbol)                                                
+                                        " ON CONFLICT (exchange, symbol)
                                                 DO UPDATE SET
                                                     name = EXCLUDED.name,
                                                     base_currency = EXCLUDED.base_currency,
