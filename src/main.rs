@@ -49,7 +49,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     let count_candles = candles.len();
                                     let mut query_builder: QueryBuilder<Postgres> =
                                         QueryBuilder::new(
-                                            "INSERT INTO candle (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
+                                            "INSERT INTO candle 
+                                            (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
                                         );
 
                                     query_builder.push_values(candles, |mut b, d| {
@@ -66,7 +67,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     });
 
                                     query_builder.push(
-                                        " ON CONFLICT (exchange, symbol, interval, timestamp)
+                                        " ON CONFLICT (exchange, symbol, interval, timestamp)                                                
                                                 DO UPDATE SET
                                                     open = EXCLUDED.open,
                                                     high = EXCLUDED.high,
