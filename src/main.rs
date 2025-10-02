@@ -234,9 +234,9 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 });
 
                                 query_builder.push(
-                                    " ON CONFLICT (exchange, symbol_name)
+                                    " ON CONFLICT (exchange, symbol)
                                                 DO UPDATE SET
-                                                    symbol = EXCLUDED.symbol,
+                                                    symbol_name = EXCLUDED.symbol_name,
                                                     taker_fee_rate = EXCLUDED.taker_fee_rate,
                                                     maker_fee_rate = EXCLUDED.maker_fee_rate,
                                                     taker_coefficient = EXCLUDED.taker_coefficient,
