@@ -219,9 +219,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(tickers) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO ticker 
-                                    (exchange, symbol, symbol_name, buy, best_bid_size, sell, 
-                                    best_ask_size, change_rate, change_price, high, low, vol, 
-                                    vol_value, last, average_price, taker_fee_rate, 
+                                    (exchange, symbol, symbol_name, taker_fee_rate, 
                                     maker_fee_rate, taker_coefficient, maker_coefficient)",
                                 );
 
@@ -229,18 +227,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     b.push_bind(&exchange)
                                         .push_bind(&d.symbol)
                                         .push_bind(&d.symbol_name)
-                                        .push_bind(&d.buy)
-                                        .push_bind(&d.best_bid_size)
-                                        .push_bind(&d.sell)
-                                        .push_bind(&d.best_ask_size)
-                                        .push_bind(&d.change_rate)
-                                        .push_bind(&d.change_price)
-                                        .push_bind(&d.high)
-                                        .push_bind(&d.low)
-                                        .push_bind(&d.vol)
-                                        .push_bind(&d.vol_value)
-                                        .push_bind(&d.last)
-                                        .push_bind(&d.average_price)
                                         .push_bind(&d.taker_fee_rate)
                                         .push_bind(&d.maker_fee_rate)
                                         .push_bind(&d.taker_coefficient)
