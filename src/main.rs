@@ -34,12 +34,12 @@ async fn main() -> Result<(), JobSchedulerError> {
         Ok(s) => {
             match Job::new_async("0 * * * * *", move |_, _| {
                 let pool = pool_candle.clone();
+                let exchange = String::from("kucoin");
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => {
                             let symbol = String::from("ADA-USDT");
                             let type_candle = String::from("1hour");
-                            let exchange = String::from("kucoin");
 
                             match client
                                 .api_v1_market_candles(symbol.clone(), type_candle.clone())
@@ -53,17 +53,17 @@ async fn main() -> Result<(), JobSchedulerError> {
                                             (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
                                         );
 
-                                    query_builder.push_values(candles, |mut b, d| {
+                                    query_builder.push_values(&candles, |mut b, d| {
                                         b.push_bind(&exchange)
                                             .push_bind(&symbol)
                                             .push_bind(&type_candle)
-                                            .push_bind(d.timestamp)
-                                            .push_bind(d.open)
-                                            .push_bind(d.high)
-                                            .push_bind(d.low)
-                                            .push_bind(d.close)
-                                            .push_bind(d.volume)
-                                            .push_bind(d.quote_volume);
+                                            .push_bind(&d.timestamp)
+                                            .push_bind(&d.open)
+                                            .push_bind(&d.high)
+                                            .push_bind(&d.low)
+                                            .push_bind(&d.close)
+                                            .push_bind(&d.volume)
+                                            .push_bind(&d.quote_volume);
                                     });
 
                                     query_builder.push(
@@ -110,30 +110,33 @@ async fn main() -> Result<(), JobSchedulerError> {
             };
             match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool_lend.clone();
+                let exchange = String::from("kucoin");
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_project_list().await {
                             Ok(lend) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO lend 
-                                    (currency, purchase_enable, redeem_enable, increment, min_purchase_size, 
-                                    max_purchase_size, interest_increment, min_interest_rate, market_interest_rate, 
-                                    max_interest_rate, auto_purchase_enable)",
+                                    (exchange, currency, purchase_enable, redeem_enable, increment, 
+                                    min_purchase_size, max_purchase_size, interest_increment, 
+                                    min_interest_rate, market_interest_rate, max_interest_rate, 
+                                    auto_purchase_enable)",
                                 );
                                 let count_lend = lend.len();
 
-                                query_builder.push_values(lend, |mut b, d| {
-                                    b.push_bind(d.currency)
-                                        .push_bind(d.purchase_enable)
-                                        .push_bind(d.redeem_enable)
-                                        .push_bind(d.increment)
-                                        .push_bind(d.min_purchase_size)
-                                        .push_bind(d.max_purchase_size)
-                                        .push_bind(d.interest_increment)
-                                        .push_bind(d.min_interest_rate)
-                                        .push_bind(d.market_interest_rate)
-                                        .push_bind(d.max_interest_rate)
-                                        .push_bind(d.auto_purchase_enable);
+                                query_builder.push_values(&lend, |mut b, d| {
+                                    b.push_bind(&exchange)
+                                        .push_bind(&d.currency)
+                                        .push_bind(&d.purchase_enable)
+                                        .push_bind(&d.redeem_enable)
+                                        .push_bind(&d.increment)
+                                        .push_bind(&d.min_purchase_size)
+                                        .push_bind(&d.max_purchase_size)
+                                        .push_bind(&d.interest_increment)
+                                        .push_bind(&d.min_interest_rate)
+                                        .push_bind(&d.market_interest_rate)
+                                        .push_bind(&d.max_interest_rate)
+                                        .push_bind(&d.auto_purchase_enable);
                                 });
 
                                 match query_builder.build().execute(&pool).await {
@@ -163,20 +166,22 @@ async fn main() -> Result<(), JobSchedulerError> {
             };
             match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool_borrow.clone();
+                let exchange = String::from("kucoin");
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_margin_borrowrate().await {
                             Ok(borrow) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO borrow 
-                                    (currency, hourly_borrow_rate, annualized_borrow_rate)",
+                                    (exchange, currency, hourly_borrow_rate, annualized_borrow_rate)",
                                 );
                                 let count_borrow = borrow.items.len();
 
-                                query_builder.push_values(borrow.items, |mut b, d| {
-                                    b.push_bind(d.currency)
-                                        .push_bind(d.hourly_borrow_rate)
-                                        .push_bind(d.annualized_borrow_rate);
+                                query_builder.push_values(&borrow.items, |mut b, d| {
+                                    b.push_bind(&exchange)
+                                        .push_bind(&d.currency)
+                                        .push_bind(&d.hourly_borrow_rate)
+                                        .push_bind(&d.annualized_borrow_rate);
                                 });
 
                                 match query_builder.build().execute(&pool).await {
@@ -207,20 +212,22 @@ async fn main() -> Result<(), JobSchedulerError> {
 
             match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool_tickers.clone();
+                let exchange = String::from("kucoin");
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v1_market_alltickers().await {
                             Ok(tickers) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO ticker 
-                                    (symbol, symbol_name, buy, best_bid_size, sell, best_ask_size, 
-                                    change_rate, change_price, high, low, vol, vol_value, last, 
-                                    average_price, taker_fee_rate, maker_fee_rate, taker_coefficient, 
-                                    maker_coefficient)",
+                                    (exchange, symbol, symbol_name, buy, best_bid_size, sell, 
+                                    best_ask_size, change_rate, change_price, high, low, vol, 
+                                    vol_value, last, average_price, taker_fee_rate, 
+                                    maker_fee_rate, taker_coefficient, maker_coefficient)",
                                 );
 
                                 query_builder.push_values(&tickers.ticker, |mut b, d| {
-                                    b.push_bind(&d.symbol)
+                                    b.push_bind(&exchange)
+                                        .push_bind(&d.symbol)
                                         .push_bind(&d.symbol_name)
                                         .push_bind(&d.buy)
                                         .push_bind(&d.best_bid_size)
@@ -267,19 +274,21 @@ async fn main() -> Result<(), JobSchedulerError> {
             };
 
             match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_currency.clone();
+                let pool: sqlx::Pool<Postgres> = pool_currency.clone();
+                let exchange = String::from("kucoin");
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v3_currencies().await {
                             Ok(currencies) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO currency 
-                                    (currency, name, full_name, precision, confirms, contract_address, 
-                                    is_margin_enabled, is_debit_enabled)",
+                                    (exchange, currency, name, full_name, precision, confirms, 
+                                    contract_address, is_margin_enabled, is_debit_enabled)",
                                 );
 
                                 query_builder.push_values(&currencies, |mut b, d| {
-                                    b.push_bind(&d.currency)
+                                    b.push_bind(&exchange)
+                                        .push_bind(&d.currency)
                                         .push_bind(&d.name)
                                         .push_bind(&d.full_name)
                                         .push_bind(&d.precision)
@@ -319,14 +328,15 @@ async fn main() -> Result<(), JobSchedulerError> {
 
             match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool_symbols.clone();
+                let exchange = String::from("kucoin");
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => match client.api_v2_symbols().await {
                             Ok(symbols) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO symbol 
-                                    (symbol, name, base_currency, quote_currency, fee_currency, market, 
-                                    base_min_size, quote_min_size, base_max_size, quote_max_size, 
+                                    (exchange, symbol, name, base_currency, quote_currency, fee_currency, 
+                                    market, base_min_size, quote_min_size, base_max_size, quote_max_size, 
                                     base_increment, quote_increment, price_increment, price_limit_rate, 
                                     min_funds, is_margin_enabled, enable_trading, fee_category, 
                                     maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled, 
@@ -336,7 +346,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 );
 
                                 query_builder.push_values(&symbols, |mut b, d| {
-                                    b.push_bind(&d.symbol)
+                                    b.push_bind(&exchange)
+                                        .push_bind(&d.symbol)
                                         .push_bind(&d.name)
                                         .push_bind(&d.base_currency)
                                         .push_bind(&d.quote_currency)
