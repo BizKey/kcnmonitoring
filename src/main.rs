@@ -102,7 +102,7 @@ async fn main() -> Result<(), JobSchedulerError> {
             }) {
                 Ok(job) => match s.add(job).await {
                     Ok(_) => {
-                        info!("Добавили задачу api_v3_project_list")
+                        info!("Добавили задачу api_v1_market_candles")
                     }
                     Err(e) => return Err(e),
                 },
@@ -117,7 +117,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(lend) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO lend 
-                                    (exchange, currency, purchase_enable, redeem_enable, increment, 
+                                    (exchange, timestamp, currency, purchase_enable, redeem_enable, increment, 
                                     min_purchase_size, max_purchase_size, interest_increment, 
                                     min_interest_rate, market_interest_rate, max_interest_rate, 
                                     auto_purchase_enable)",
@@ -173,7 +173,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(borrow) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO borrow 
-                                    (exchange, currency, hourly_borrow_rate, annualized_borrow_rate)",
+                                    (exchange, timestamp, currency, hourly_borrow_rate, annualized_borrow_rate)",
                                 );
                                 let count_borrow = borrow.items.len();
 
@@ -233,6 +233,16 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.maker_coefficient);
                                 });
 
+                                query_builder.push(
+                                    " ON CONFLICT (exchange, symbol_name)
+                                                DO UPDATE SET
+                                                    symbol = EXCLUDED.symbol,
+                                                    taker_fee_rate = EXCLUDED.taker_fee_rate,
+                                                    maker_fee_rate = EXCLUDED.maker_fee_rate,
+                                                    taker_coefficient = EXCLUDED.taker_coefficient,
+                                                    maker_coefficient = EXCLUDED.maker_coefficient",
+                                );
+
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
                                         info!("Success insert {} tickers", tickers.ticker.len())
@@ -283,6 +293,18 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.is_margin_enabled)
                                         .push_bind(&d.is_debit_enabled);
                                 });
+
+                                query_builder.push(
+                                        " ON CONFLICT (exchange, currency)                                                
+                                                DO UPDATE SET
+                                                    name = EXCLUDED.name,
+                                                    full_name = EXCLUDED.full_name,
+                                                    precision = EXCLUDED.precision,
+                                                    confirms = EXCLUDED.confirms,
+                                                    contract_address = EXCLUDED.contract_address,
+                                                    is_margin_enabled = EXCLUDED.is_margin_enabled,
+                                                    is_debit_enabled = EXCLUDED.is_debit_enabled",
+                                    );
 
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
@@ -362,6 +384,38 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.callauction_third_stage_start_time)
                                         .push_bind(&d.trading_start_time);
                                 });
+
+                                query_builder.push(
+                                        " ON CONFLICT (exchange, symbol)                                                
+                                                DO UPDATE SET
+                                                    name = EXCLUDED.name,
+                                                    base_currency = EXCLUDED.base_currency,
+                                                    quote_currency = EXCLUDED.quote_currency,
+                                                    fee_currency = EXCLUDED.fee_currency,
+                                                    market = EXCLUDED.market,
+                                                    base_min_size = EXCLUDED.base_min_size,
+                                                    quote_min_size = EXCLUDED.quote_min_size,
+                                                    base_max_size = EXCLUDED.base_max_size,
+                                                    quote_max_size = EXCLUDED.quote_max_size,
+                                                    base_increment = EXCLUDED.base_increment,
+                                                    quote_increment = EXCLUDED.quote_increment,
+                                                    price_increment = EXCLUDED.price_increment,
+                                                    price_limit_rate = EXCLUDED.price_limit_rate,
+                                                    min_funds = EXCLUDED.min_funds,
+                                                    is_margin_enabled = EXCLUDED.is_margin_enabled,
+                                                    enable_trading = EXCLUDED.enable_trading,
+                                                    fee_category = EXCLUDED.fee_category,
+                                                    maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
+                                                    taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
+                                                    st = EXCLUDED.st,
+                                                    callauction_is_enabled = EXCLUDED.callauction_is_enabled,
+                                                    callauction_price_floor = EXCLUDED.callauction_price_floor,
+                                                    callauction_price_ceiling = EXCLUDED.callauction_price_ceiling,
+                                                    callauction_first_stage_start_time = EXCLUDED.callauction_first_stage_start_time,
+                                                    callauction_second_stage_start_time = EXCLUDED.callauction_second_stage_start_time,
+                                                    callauction_third_stage_start_time = EXCLUDED.callauction_third_stage_start_time,
+                                                    trading_start_time = EXCLUDED.trading_start_time",
+                                    );
 
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
