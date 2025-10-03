@@ -55,7 +55,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => {
                             match sqlx::query_as::<_, models::SymbolDb>(
-                                "SELECT symbol
+                                "SELECT exchange, symbol
                                      FROM symbol
                                      WHERE exchange = $1",
                             )
