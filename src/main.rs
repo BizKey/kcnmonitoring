@@ -59,7 +59,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                      FROM symbol
                                      WHERE exchange = $1",
                             )
-                            .bind(exchange.clone())
+                            .bind(&exchange)
                             .fetch_all(&pool)
                             .await
                             {
@@ -76,8 +76,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         {
                                             Ok(candles) => {
                                                 let count_candles = candles.len();
-                                                let mut query_builder: QueryBuilder<Postgres> =
-                                        QueryBuilder::new(
+                                                let mut query_builder: QueryBuilder<Postgres> =                                        QueryBuilder::new(
                                             "INSERT INTO candle 
                                             (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
                                         );
@@ -115,8 +114,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     }
                                                     Err(e) => {
                                                         error!(
-                                                            "Error on bulk insert/update candles to db: {}",
-                                                            e
+                                                            "Error on bulk insert/update candles to db: {}:{}",
+                                                            e, &symbol.symbol
                                                         )
                                                     }
                                                 }
