@@ -6,6 +6,8 @@ use sqlx::{Postgres, QueryBuilder};
 use std::env;
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
+
+use crate::api::models;
 mod api {
     pub mod models;
     pub mod requests;
@@ -52,36 +54,55 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Box::pin(async move {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => {
-                            let symbol = String::from("ADA-USDT");
-                            let type_candle = String::from("1hour");
+                            match sqlx::query_as::<_, models::SymbolDb>(
+                                "SELECT 
+                                        exchange, symbol, name, base_currency, quote_currency, fee_currency, 
+                                        market, base_min_size, quote_min_size, base_max_size, quote_max_size, 
+                                        base_increment, quote_increment, price_increment, price_limit_rate, 
+                                        min_funds, is_margin_enabled, enable_trading, fee_category, 
+                                        maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled, 
+                                        callauction_price_floor, callauction_price_ceiling, 
+                                        callauction_first_stage_start_time, callauction_second_stage_start_time, 
+                                        callauction_third_stage_start_time, trading_start_time 
+                                    FROM symbol
+                                    WHERE exchange = $1",
+                            )
+                            .bind(&exchange).fetch_all(&pool)
+                            .await {
+                                Ok(symbols) => {
+                                    for symbol in symbols.iter() {
+                                let type_candle = String::from("1hour");
 
-                            match client
-                                .api_v1_market_candles(symbol.clone(), type_candle.clone())
-                                .await
-                            {
-                                Ok(candles) => {
-                                    let count_candles = candles.len();
-                                    let mut query_builder: QueryBuilder<Postgres> =
+                                match client
+                                    .api_v1_market_candles(
+                                        symbol.symbol.clone(),
+                                        type_candle.clone(),
+                                    )
+                                    .await
+                                {
+                                    Ok(candles) => {
+                                        let count_candles = candles.len();
+                                        let mut query_builder: QueryBuilder<Postgres> =
                                         QueryBuilder::new(
                                             "INSERT INTO candle 
                                             (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
                                         );
 
-                                    query_builder.push_values(&candles, |mut b, d| {
-                                        b.push_bind(&exchange)
-                                            .push_bind(&symbol)
-                                            .push_bind(&type_candle)
-                                            .push_bind(&d.timestamp)
-                                            .push_bind(&d.open)
-                                            .push_bind(&d.high)
-                                            .push_bind(&d.low)
-                                            .push_bind(&d.close)
-                                            .push_bind(&d.volume)
-                                            .push_bind(&d.quote_volume);
-                                    });
+                                        query_builder.push_values(&candles, |mut b, d| {
+                                            b.push_bind(&exchange)
+                                                .push_bind(&symbol.symbol)
+                                                .push_bind(&type_candle)
+                                                .push_bind(&d.timestamp)
+                                                .push_bind(&d.open)
+                                                .push_bind(&d.high)
+                                                .push_bind(&d.low)
+                                                .push_bind(&d.close)
+                                                .push_bind(&d.volume)
+                                                .push_bind(&d.quote_volume);
+                                        });
 
-                                    query_builder.push(
-                                        " ON CONFLICT (exchange, symbol, interval, timestamp)
+                                        query_builder.push(
+                                            " ON CONFLICT (exchange, symbol, interval, timestamp)
                                                 DO UPDATE SET
                                                     open = EXCLUDED.open,
                                                     high = EXCLUDED.high,
@@ -89,24 +110,33 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     close = EXCLUDED.close,
                                                     volume = EXCLUDED.volume,
                                                     quote_volume = EXCLUDED.quote_volume",
-                                    );
+                                        );
 
-                                    match query_builder.build().execute(&pool).await {
-                                        Ok(_) => {
-                                            info!("Success insert/update {} candles", count_candles)
-                                        }
-                                        Err(e) => {
-                                            error!(
-                                                "Error on bulk insert/update candles to db: {}",
-                                                e
-                                            )
+                                        match query_builder.build().execute(&pool).await {
+                                            Ok(_) => {
+                                                info!(
+                                                    "Success insert/update {} candles",
+                                                    count_candles
+                                                )
+                                            }
+                                            Err(e) => {
+                                                error!(
+                                                    "Error on bulk insert/update candles to db: {}",
+                                                    e
+                                                )
+                                            }
                                         }
                                     }
-                                }
-                                Err(e) => {
-                                    error!("Ошибка при выполнении запроса: {}", e)
+                                    Err(e) => {
+                                        error!("Ошибка при выполнении запроса: {}", e)
+                                    }
                                 }
                             }
+                        },
+                           Err(e) => {
+                              error!("Ошибка при выполнении запроса: {}", e)
+                           }
+                            };
                         }
                         Err(e) => {
                             error!("Ошибка при выполнении запроса: {}", e)
