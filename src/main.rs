@@ -48,7 +48,7 @@ async fn main() -> Result<(), JobSchedulerError> {
 
     match JobScheduler::new().await {
         Ok(s) => {
-            match Job::new_async("0 0 * * * *", move |_, _| {
+            match Job::new_async("0 * * * * *", move |_, _| {
                 let pool = pool_candle.clone();
                 let exchange = String::from("kucoin");
                 Box::pin(async move {
@@ -59,7 +59,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                      FROM symbol
                                      WHERE exchange = $1",
                             )
-                            .bind(&exchange)
+                            .bind(exchange.clone())
                             .fetch_all(&pool)
                             .await
                             {
