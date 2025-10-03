@@ -67,7 +67,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     for symbol in symbols.iter() {
                                         let type_candle = String::from("1hour");
                                         // tokio::time::sleep(Duration::from_secs(1)).await;
-                                        let symbold = symbol.symbol.clone();
                                         match client
                                             .api_v1_market_candles(
                                                 symbol.symbol.clone(),
@@ -83,8 +82,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         );
 
                                                 query_builder.push_values(&candles, |mut b, d| {
-                                                    b.push_bind(&exchange)
-                                                        .push_bind(&symbold)
+                                                    b.push_bind(&symbol.exchange)
+                                                        .push_bind(&symbol.symbol)
                                                         .push_bind(&type_candle)
                                                         .push_bind(&d.timestamp)
                                                         .push_bind(&d.open)
