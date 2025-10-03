@@ -55,9 +55,13 @@ async fn main() -> Result<(), JobSchedulerError> {
                     match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                         Ok(client) => {
                             match sqlx::query_as::<_, models::SymbolDb>(
-                                "SELECT exchange, symbol
-                                     FROM symbol
-                                     WHERE exchange = $1",
+                                "SELECT 
+                                        exchange, 
+                                        symbol
+                                    FROM symbol
+                                    WHERE 
+                                        exchange = $1 
+                                        AND enable_trading = true;",
                             )
                             .bind(&exchange)
                             .fetch_all(&pool)
