@@ -61,7 +61,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     FROM symbol
                                     WHERE 
                                         exchange = $1 
-                                        AND enable_trading = true;",
+                                        AND enable_trading = true
+                                        AND quote_currency = 'USDT';",
                             )
                             .bind(&exchange)
                             .fetch_all(&pool)
