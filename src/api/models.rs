@@ -215,6 +215,9 @@ pub struct ApiV3MarginBorrowRate {
 
 #[derive(Debug, Deserialize)]
 pub struct Candle {
+    pub exchange: String,
+    pub symbol: String,
+    pub interval: String,
     pub timestamp: String,
     pub open: String,
     pub high: String,
