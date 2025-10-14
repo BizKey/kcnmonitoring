@@ -44,7 +44,7 @@ async fn main() -> Result<(), JobSchedulerError> {
     let pool_symbols = pool.clone();
     let pool_borrow = pool.clone();
     let pool_lend = pool.clone();
-    let pool_candle = pool.clone();
+    let pool_candle = pool.clone();    
     let pool_websocket = pool.clone();
 
     tokio::spawn(async move {
