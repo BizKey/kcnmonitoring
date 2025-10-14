@@ -168,8 +168,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     b.push_bind(&exchange)
                                         .push_bind(&timestamp)
                                         .push_bind(&d.currency)
-                                        .push_bind(&d.purchase_enable)
-                                        .push_bind(&d.redeem_enable)
+                                        .push_bind(d.purchase_enable)
+                                        .push_bind(d.redeem_enable)
                                         .push_bind(&d.increment)
                                         .push_bind(&d.min_purchase_size)
                                         .push_bind(&d.max_purchase_size)
@@ -177,7 +177,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.min_interest_rate)
                                         .push_bind(&d.market_interest_rate)
                                         .push_bind(&d.max_interest_rate)
-                                        .push_bind(&d.auto_purchase_enable);
+                                        .push_bind(d.auto_purchase_enable);
                                 });
 
                                 query_builder.push(
@@ -352,11 +352,11 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.currency)
                                         .push_bind(&d.name)
                                         .push_bind(&d.full_name)
-                                        .push_bind(&d.precision)
-                                        .push_bind(&d.confirms)
+                                        .push_bind(d.precision)
+                                        .push_bind(d.confirms)
                                         .push_bind(&d.contract_address)
-                                        .push_bind(&d.is_margin_enabled)
-                                        .push_bind(&d.is_debit_enabled);
+                                        .push_bind(d.is_margin_enabled)
+                                        .push_bind(d.is_debit_enabled);
                                 });
 
                                 query_builder.push(
@@ -435,19 +435,19 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.price_increment)
                                         .push_bind(&d.price_limit_rate)
                                         .push_bind(&d.min_funds)
-                                        .push_bind(&d.is_margin_enabled)
-                                        .push_bind(&d.enable_trading)
-                                        .push_bind(&d.fee_category)
+                                        .push_bind(d.is_margin_enabled)
+                                        .push_bind(d.enable_trading)
+                                        .push_bind(d.fee_category)
                                         .push_bind(&d.maker_fee_coefficient)
                                         .push_bind(&d.taker_fee_coefficient)
-                                        .push_bind(&d.st)
-                                        .push_bind(&d.callauction_is_enabled)
+                                        .push_bind(d.st)
+                                        .push_bind(d.callauction_is_enabled)
                                         .push_bind(&d.callauction_price_floor)
                                         .push_bind(&d.callauction_price_ceiling)
-                                        .push_bind(&d.callauction_first_stage_start_time)
-                                        .push_bind(&d.callauction_second_stage_start_time)
-                                        .push_bind(&d.callauction_third_stage_start_time)
-                                        .push_bind(&d.trading_start_time);
+                                        .push_bind(d.callauction_first_stage_start_time)
+                                        .push_bind(d.callauction_second_stage_start_time)
+                                        .push_bind(d.callauction_third_stage_start_time)
+                                        .push_bind(d.trading_start_time);
                                 });
 
                                 query_builder.push(
