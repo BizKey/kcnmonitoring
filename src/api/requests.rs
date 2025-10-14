@@ -250,9 +250,8 @@ impl KuCoinClient {
                         Ok(r) => match r.code.as_str() {
                             "200000" => {
                                 let candles = r
-                                    .into_candles()
+                                    .into_candles(symbol_name, type_candles)
                                     .map_err(|e| format!("Failed to parse candles: {}", e))?;
-                                // Теперь у вас есть Vec<Candle>
                                 Ok(candles)
                             }
                             _ => Err(format!("API error: code {}", r.code).into()),
