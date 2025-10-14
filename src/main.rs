@@ -44,109 +44,9 @@ async fn main() -> Result<(), JobSchedulerError> {
     let pool_symbols = pool.clone();
     let pool_borrow = pool.clone();
     let pool_lend = pool.clone();
-    let pool_candle = pool.clone();
 
     match JobScheduler::new().await {
         Ok(s) => {
-            match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_candle.clone();
-                let exchange = String::from("kucoin");
-                Box::pin(async move {
-                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-                        Ok(client) => {
-                            match sqlx::query_as::<_, models::SymbolDb>(
-                                "SELECT 
-                                        exchange, 
-                                        symbol
-                                    FROM symbol
-                                    WHERE 
-                                        exchange = $1 
-                                        AND enable_trading = true
-                                        AND quote_currency = 'USDT';",
-                            )
-                            .bind(&exchange)
-                            .fetch_all(&pool)
-                            .await
-                            {
-                                Ok(symbols) => {
-                                    for symbol in symbols.iter() {
-                                        match client
-                                            .api_v1_market_candles(
-                                                symbol.symbol.clone(),
-                                                String::from("1hour"),
-                                            )
-                                            .await
-                                        {
-                                            Ok(candles) => {
-                                                let count_candles = candles.len();
-                                                let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                            "INSERT INTO candle 
-                                            (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
-                                        );
-                                                query_builder.push_values(&candles, |mut b, d| {
-                                                    b.push_bind(&d.exchange)
-                                                        .push_bind(&d.symbol)
-                                                        .push_bind(&d.interval)
-                                                        .push_bind(&d.timestamp)
-                                                        .push_bind(&d.open)
-                                                        .push_bind(&d.high)
-                                                        .push_bind(&d.low)
-                                                        .push_bind(&d.close)
-                                                        .push_bind(&d.volume)
-                                                        .push_bind(&d.quote_volume);
-                                                });
-
-                                                query_builder.push(
-                                            " ON CONFLICT (exchange, symbol, interval, timestamp)
-                                                DO UPDATE SET
-                                                    open = EXCLUDED.open,
-                                                    high = EXCLUDED.high,
-                                                    low = EXCLUDED.low,
-                                                    close = EXCLUDED.close,
-                                                    volume = EXCLUDED.volume,
-                                                    quote_volume = EXCLUDED.quote_volume",
-                                        );
-
-                                                match query_builder.build().execute(&pool).await {
-                                                    Ok(_) => {
-                                                        info!(
-                                                            "Success insert/update {} candles on symbol {}",
-                                                            count_candles, &symbol.symbol
-                                                        )
-                                                    }
-                                                    Err(e) => {
-                                                        error!(
-                                                            "Error on bulk insert/update candles to db: {}:{}",
-                                                            e, &symbol.symbol
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                            Err(e) => {
-                                                error!("Ошибка при выполнении запроса: {}", e)
-                                            }
-                                        }
-                                    }
-                                }
-                                Err(e) => {
-                                    error!("Ошибка при выполнении запроса: {}", e)
-                                }
-                            };
-                        }
-                        Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
-                        }
-                    };
-                })
-            }) {
-                Ok(job) => match s.add(job).await {
-                    Ok(_) => {
-                        info!("Добавили задачу api_v1_market_candles")
-                    }
-                    Err(e) => return Err(e),
-                },
-                Err(e) => return Err(e),
-            };
             match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool_lend.clone();
                 let exchange = String::from("kucoin");
@@ -517,6 +417,100 @@ async fn main() -> Result<(), JobSchedulerError> {
         }
         Err(e) => return Err(e),
     };
+
+    let pool_candle_bg = pool.clone();
+
+    tokio::spawn(async move {
+        let exchange = String::from("kucoin");
+        let client = match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+            Ok(client) => client,
+            Err(e) => {
+                error!("Не удалось создать KuCoin клиент для свечей: {}", e);
+                return;
+            }
+        };
+
+        loop {
+            // Получаем активные USDT-символы
+            let symbols = match sqlx::query_as::<_, models::SymbolDb>(
+                "SELECT exchange, symbol
+             FROM symbol
+             WHERE exchange = $1 
+               AND enable_trading = true
+               AND quote_currency = 'USDT';",
+            )
+            .bind(&exchange)
+            .fetch_all(&pool_candle_bg)
+            .await
+            {
+                Ok(s) => s,
+                Err(e) => {
+                    error!("Ошибка при получении символов для свечей: {}", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    continue;
+                }
+            };
+
+            // Обрабатываем каждый символ с паузой 50 мс
+            for symbol in symbols {
+                match client
+                    .api_v1_market_candles(symbol.symbol.clone(), "1hour".to_string())
+                    .await
+                {
+                    Ok(candles) => {
+                        if candles.is_empty() {
+                            continue;
+                        }
+
+                        let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+                        "INSERT INTO candle 
+                        (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
+                    );
+
+                        qb.push_values(&candles, |mut b, d| {
+                            b.push_bind(&d.exchange)
+                                .push_bind(&d.symbol)
+                                .push_bind(&d.interval)
+                                .push_bind(&d.timestamp)
+                                .push_bind(&d.open)
+                                .push_bind(&d.high)
+                                .push_bind(&d.low)
+                                .push_bind(&d.close)
+                                .push_bind(&d.volume)
+                                .push_bind(&d.quote_volume);
+                        });
+
+                        qb.push(
+                            " ON CONFLICT (exchange, symbol, interval, timestamp)
+                          DO UPDATE SET
+                            open = EXCLUDED.open,
+                            high = EXCLUDED.high,
+                            low = EXCLUDED.low,
+                            close = EXCLUDED.close,
+                            volume = EXCLUDED.volume,
+                            quote_volume = EXCLUDED.quote_volume",
+                        );
+
+                        if let Err(e) = qb.build().execute(&pool_candle_bg).await {
+                            error!("Ошибка вставки свечей для {}: {}", symbol.symbol, e);
+                        } else {
+                            info!(
+                                "Успешно обновлено {} свечей для {}",
+                                candles.len(),
+                                symbol.symbol
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        error!("Ошибка запроса свечей для {}: {}", symbol.symbol, e);
+                    }
+                }
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    });
 
     loop {
         tokio::time::sleep(Duration::from_secs(100)).await;
