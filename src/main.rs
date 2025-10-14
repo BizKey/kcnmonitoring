@@ -1,4 +1,4 @@
-use chrono::{NaiveDateTime, Timelike, Utc};
+use chrono::{Timelike, Utc};
 use dotenv::dotenv;
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
@@ -44,14 +44,7 @@ async fn main() -> Result<(), JobSchedulerError> {
     let pool_symbols = pool.clone();
     let pool_borrow = pool.clone();
     let pool_lend = pool.clone();
-    let pool_candle = pool.clone();    
-    let pool_websocket = pool.clone();
-
-    tokio::spawn(async move {
-        if let Err(e) = start_websocket_listener(pool_websocket).await {
-            error!("WebSocket ошибка: {}", e);
-        }
-    });
+    let pool_candle = pool.clone();
 
     match JobScheduler::new().await {
         Ok(s) => {
@@ -77,12 +70,10 @@ async fn main() -> Result<(), JobSchedulerError> {
                             {
                                 Ok(symbols) => {
                                     for symbol in symbols.iter() {
-                                        let type_candle = String::from("1hour");
-                                        tokio::time::sleep(Duration::from_secs(1)).await;
                                         match client
                                             .api_v1_market_candles(
                                                 symbol.symbol.clone(),
-                                                type_candle.clone(),
+                                                String::from("1hour"),
                                             )
                                             .await
                                         {
@@ -92,11 +83,10 @@ async fn main() -> Result<(), JobSchedulerError> {
                                             "INSERT INTO candle 
                                             (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
                                         );
-
                                                 query_builder.push_values(&candles, |mut b, d| {
-                                                    b.push_bind(&symbol.exchange)
-                                                        .push_bind(&symbol.symbol)
-                                                        .push_bind(&type_candle)
+                                                    b.push_bind(&d.exchange)
+                                                        .push_bind(&d.symbol)
+                                                        .push_bind(&d.interval)
                                                         .push_bind(&d.timestamp)
                                                         .push_bind(&d.open)
                                                         .push_bind(&d.high)
@@ -531,112 +521,4 @@ async fn main() -> Result<(), JobSchedulerError> {
     loop {
         tokio::time::sleep(Duration::from_secs(100)).await;
     }
-}
-
-async fn start_websocket_listener(
-    pool: sqlx::Pool<Postgres>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let ws_client =
-        api::requests::KucoinWebSocketClient::new("wss://ws-api-spot.kucoin.com".to_string());
-
-    // Получаем символы из базы данных для подписки
-    let symbols = get_symbols_for_websocket(&pool).await?;
-    let interval = "1min".to_string(); // или любой другой интервал
-
-    info!("Запускаем WebSocket для {} символов", symbols.len());
-
-    let mut kline_receiver = ws_client.connect_and_subscribe(symbols, interval).await?;
-
-    // Обрабатываем входящие данные kline
-    while let Some(kline_data) = kline_receiver.recv().await {
-        process_realtime_kline(&pool, kline_data).await?;
-    }
-
-    Ok(())
-}
-
-async fn get_symbols_for_websocket(
-    pool: &sqlx::Pool<Postgres>,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let symbols = sqlx::query_as::<_, models::SymbolDb>(
-        "SELECT 
-            exchange, 
-            symbol
-        FROM symbol
-        WHERE 
-            exchange = $1 
-            AND enable_trading = true
-            AND quote_currency = 'USDT'
-        LIMIT 10", // Ограничиваем количество для демонстрации
-    )
-    .bind("kucoin")
-    .fetch_all(pool)
-    .await?;
-
-    Ok(symbols.into_iter().map(|s| s.symbol).collect())
-}
-
-async fn process_realtime_kline(
-    pool: &sqlx::Pool<Postgres>,
-    kline_data: api::requests::WebSocketKlineData,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if kline_data.candles.len() < 6 {
-        return Ok(());
-    }
-
-    let candles = vec![models::Candle {
-        exchange: "kucoin".to_string(),
-        symbol: kline_data.symbol.clone(),
-        interval: "1min".to_string(), // или из параметров
-        timestamp: kline_data.candles[0].parse().unwrap_or(0),
-        open: kline_data.candles[1].parse().unwrap_or(0.0),
-        high: kline_data.candles[3].parse().unwrap_or(0.0),
-        low: kline_data.candles[4].parse().unwrap_or(0.0),
-        close: kline_data.candles[2].parse().unwrap_or(0.0),
-        volume: kline_data.candles[5].parse().unwrap_or(0.0),
-        quote_volume: 0.0, // Не предоставляется в WebSocket
-    }];
-
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        "INSERT INTO candle 
-        (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
-    );
-
-    query_builder.push_values(&candles, |mut b, d| {
-        b.push_bind(&d.exchange)
-            .push_bind(&d.symbol)
-            .push_bind(&d.interval)
-            .push_bind(&d.timestamp)
-            .push_bind(&d.open)
-            .push_bind(&d.high)
-            .push_bind(&d.low)
-            .push_bind(&d.close)
-            .push_bind(&d.volume)
-            .push_bind(&d.quote_volume);
-    });
-
-    query_builder.push(
-        " ON CONFLICT (exchange, symbol, interval, timestamp)
-            DO UPDATE SET
-                open = EXCLUDED.open,
-                high = EXCLUDED.high,
-                low = EXCLUDED.low,
-                close = EXCLUDED.close,
-                volume = EXCLUDED.volume,
-                quote_volume = EXCLUDED.quote_volume",
-    );
-
-    match query_builder.build().execute(pool).await {
-        Ok(_) => {
-            info!("WebSocket: обновлена kline для {}", kline_data.symbol);
-        }
-        Err(e) => {
-            error!(
-                "WebSocket: ошибка сохранения kline для {}: {}",
-                kline_data.symbol, e
-            );
-        }
-    }
-
-    Ok(())
 }

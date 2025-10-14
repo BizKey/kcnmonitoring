@@ -233,7 +233,11 @@ pub struct ListCandle {
     pub data: Vec<Vec<String>>,
 }
 impl ListCandle {
-    pub fn into_candles(self) -> Result<Vec<Candle>, &'static str> {
+    pub fn into_candles(
+        self,
+        symbol_name: String,
+        interval: String,
+    ) -> Result<Vec<Candle>, &'static str> {
         self.data
             .into_iter()
             .map(|inner| {
@@ -241,6 +245,9 @@ impl ListCandle {
                     return Err("Invalid candle data length");
                 }
                 Ok(Candle {
+                    exchange: String::from("kucoin"),
+                    symbol: symbol_name.clone(),
+                    interval: interval.clone(),
                     timestamp: inner[0].clone(),
                     open: inner[1].clone(),
                     close: inner[2].clone(),
