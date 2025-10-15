@@ -499,8 +499,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                 }
                 tokio::time::sleep(Duration::from_millis(50)).await;
             }
-
             tokio::time::sleep(Duration::from_secs(1)).await;
+            info!("Загрузили данные свечей")
         }
     });
 
