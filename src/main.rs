@@ -431,7 +431,6 @@ async fn main() -> Result<(), JobSchedulerError> {
         };
 
         loop {
-            // Получаем активные USDT-символы
             let symbols = match sqlx::query_as::<_, models::SymbolDb>(
                 "SELECT exchange, symbol
              FROM symbol
@@ -451,7 +450,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                 }
             };
 
-            // Обрабатываем каждый символ с паузой 50 мс
             for symbol in symbols {
                 match client
                     .api_v1_market_candles(symbol.symbol.clone(), "1hour".to_string())
@@ -493,12 +491,6 @@ async fn main() -> Result<(), JobSchedulerError> {
 
                         if let Err(e) = qb.build().execute(&pool_candle_bg).await {
                             error!("Ошибка вставки свечей для {}: {}", symbol.symbol, e);
-                        } else {
-                            info!(
-                                "Успешно обновлено {} свечей для {}",
-                                candles.len(),
-                                symbol.symbol
-                            );
                         }
                     }
                     Err(e) => {
@@ -507,8 +499,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                 }
                 tokio::time::sleep(Duration::from_millis(50)).await;
             }
-
             tokio::time::sleep(Duration::from_secs(1)).await;
+            info!("Загрузили данные свечей")
         }
     });
 
