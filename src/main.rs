@@ -450,7 +450,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                 }
             };
 
-            // Обрабатываем каждый символ с паузой 50 мс
             for symbol in symbols {
                 match client
                     .api_v1_market_candles(symbol.symbol.clone(), "1hour".to_string())

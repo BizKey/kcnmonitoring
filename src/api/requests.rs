@@ -52,7 +52,6 @@ impl KuCoinClient {
     pub async fn api_v3_margin_borrowrate(
         &self,
     ) -> Result<ApiV3MarginBorrowRateData, Box<dyn std::error::Error + Send + Sync>> {
-        // Query the borrowing interest rate through this interface.
         return match self
             .make_request(
                 reqwest::Method::GET,
@@ -98,7 +97,6 @@ impl KuCoinClient {
     pub async fn api_v3_project_list(
         &self,
     ) -> Result<Vec<LoanMarket>, Box<dyn std::error::Error + Send + Sync>> {
-        // This API endpoint is used to get the information about the currencies available for lending.
         return match self
             .make_request(
                 reqwest::Method::GET,
@@ -399,7 +397,6 @@ impl KuCoinClient {
         }
 
         let response = request_builder.send().await.map_err(|e| {
-            // Детальный анализ ошибки reqwest
             if e.is_timeout() {
                 format!("Timeout {}: {}", url, e)
             } else if e.is_connect() {
