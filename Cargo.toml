@@ -17,3 +17,4 @@ sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "chrono"] }
 sha2 = "0.10"
 hmac = "0.12"
 base64 = "0.22"
+
