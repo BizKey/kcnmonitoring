@@ -1,4 +1,3 @@
-use chrono::{Timelike, Utc};
 use dotenv::dotenv;
 use log::{error, info};
 use sqlx::postgres::PgPoolOptions;
@@ -7,23 +6,9 @@ use std::env;
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 
-use crate::api::models;
 mod api {
     pub mod models;
     pub mod requests;
-}
-
-fn get_timestamp() -> Result<String, Box<dyn std::error::Error>> {
-    let now = Utc::now();
-
-    Ok(now
-        .date_naive()
-        .and_hms_opt(now.hour(), 0, 0)
-        .expect("Invalid time")
-        .and_local_timezone(Utc)
-        .unwrap()
-        .timestamp()
-        .to_string())
 }
 
 #[tokio::main]
@@ -42,139 +27,9 @@ async fn main() -> Result<(), JobSchedulerError> {
     let pool_tickers = pool.clone();
     let pool_currency = pool.clone();
     let pool_symbols = pool.clone();
-    let pool_borrow = pool.clone();
-    let pool_lend = pool.clone();
 
     match JobScheduler::new().await {
         Ok(s) => {
-            match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_lend.clone();
-                let exchange = String::from("kucoin");
-                Box::pin(async move {
-                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-                        Ok(client) => match client.api_v3_project_list().await {
-                            Ok(lend) => {
-                                let timestamp = get_timestamp().unwrap();
-                                let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO lend 
-                                    (exchange, timestamp, currency, purchase_enable, redeem_enable, increment, 
-                                    min_purchase_size, max_purchase_size, interest_increment, 
-                                    min_interest_rate, market_interest_rate, max_interest_rate, 
-                                    auto_purchase_enable)",
-                                );
-                                let count_lend = lend.len();
-
-                                query_builder.push_values(&lend, |mut b, d| {
-                                    b.push_bind(&exchange)
-                                        .push_bind(&timestamp)
-                                        .push_bind(&d.currency)
-                                        .push_bind(d.purchase_enable)
-                                        .push_bind(d.redeem_enable)
-                                        .push_bind(&d.increment)
-                                        .push_bind(&d.min_purchase_size)
-                                        .push_bind(&d.max_purchase_size)
-                                        .push_bind(&d.interest_increment)
-                                        .push_bind(&d.min_interest_rate)
-                                        .push_bind(&d.market_interest_rate)
-                                        .push_bind(&d.max_interest_rate)
-                                        .push_bind(d.auto_purchase_enable);
-                                });
-
-                                query_builder.push(
-                                        " ON CONFLICT (exchange, timestamp, currency)
-                                                DO UPDATE SET
-                                                    purchase_enable = EXCLUDED.purchase_enable,
-                                                    redeem_enable = EXCLUDED.redeem_enable,
-                                                    increment = EXCLUDED.increment,
-                                                    min_purchase_size = EXCLUDED.min_purchase_size,
-                                                    max_purchase_size = EXCLUDED.max_purchase_size,
-                                                    interest_increment = EXCLUDED.interest_increment,
-                                                    min_interest_rate = EXCLUDED.min_interest_rate,
-                                                    market_interest_rate = EXCLUDED.market_interest_rate,
-                                                    max_interest_rate = EXCLUDED.max_interest_rate,
-                                                    auto_purchase_enable = EXCLUDED.auto_purchase_enable",
-                                    );
-
-                                match query_builder.build().execute(&pool).await {
-                                    Ok(_) => {
-                                        info!("Success insert {} lends", count_lend)
-                                    }
-                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
-                                }
-                            }
-                            Err(e) => {
-                                error!("Ошибка при выполнении запроса: {}", e)
-                            }
-                        },
-                        Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
-                        }
-                    };
-                })
-            }) {
-                Ok(job) => match s.add(job).await {
-                    Ok(_) => {
-                        info!("Добавили задачу api_v3_project_list")
-                    }
-                    Err(e) => return Err(e),
-                },
-                Err(e) => return Err(e),
-            };
-            match Job::new_async("0 0 * * * *", move |_, _| {
-                let pool = pool_borrow.clone();
-                let exchange = String::from("kucoin");
-                Box::pin(async move {
-                    match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-                        Ok(client) => match client.api_v3_margin_borrowrate().await {
-                            Ok(borrow) => {
-                                let timestamp = get_timestamp().unwrap();
-                                let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO borrow 
-                                    (exchange, timestamp, currency, hourly_borrow_rate, annualized_borrow_rate)",
-                                );
-                                let count_borrow = borrow.items.len();
-
-                                query_builder.push_values(&borrow.items, |mut b, d| {
-                                    b.push_bind(&exchange)
-                                        .push_bind(&timestamp)
-                                        .push_bind(&d.currency)
-                                        .push_bind(&d.hourly_borrow_rate)
-                                        .push_bind(&d.annualized_borrow_rate);
-                                });
-
-                                query_builder.push(
-                                        " ON CONFLICT (exchange, timestamp, currency)
-                                                DO UPDATE SET
-                                                    hourly_borrow_rate = EXCLUDED.hourly_borrow_rate,
-                                                    annualized_borrow_rate = EXCLUDED.annualized_borrow_rate",
-                                    );
-
-                                match query_builder.build().execute(&pool).await {
-                                    Ok(_) => {
-                                        info!("Success insert {} borrow", count_borrow)
-                                    }
-                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
-                                }
-                            }
-                            Err(e) => {
-                                error!("Ошибка при выполнении запроса: {}", e)
-                            }
-                        },
-                        Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
-                        }
-                    };
-                })
-            }) {
-                Ok(job) => match s.add(job).await {
-                    Ok(_) => {
-                        info!("Добавили задачу api_v3_margin_borrowrate")
-                    }
-                    Err(e) => return Err(e),
-                },
-                Err(e) => return Err(e),
-            };
-
             match Job::new_async("0 0 * * * *", move |_, _| {
                 let pool = pool_tickers.clone();
                 let exchange = String::from("kucoin");
@@ -417,92 +272,6 @@ async fn main() -> Result<(), JobSchedulerError> {
         }
         Err(e) => return Err(e),
     };
-
-    let pool_candle_bg = pool.clone();
-
-    tokio::spawn(async move {
-        let exchange = String::from("kucoin");
-        let client = match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
-            Ok(client) => client,
-            Err(e) => {
-                error!("Не удалось создать KuCoin клиент для свечей: {}", e);
-                return;
-            }
-        };
-
-        loop {
-            let symbols = match sqlx::query_as::<_, models::SymbolDb>(
-                "SELECT exchange, symbol
-             FROM symbol
-             WHERE exchange = $1 
-               AND enable_trading = true
-               AND quote_currency = 'USDT';",
-            )
-            .bind(&exchange)
-            .fetch_all(&pool_candle_bg)
-            .await
-            {
-                Ok(s) => s,
-                Err(e) => {
-                    error!("Ошибка при получении символов для свечей: {}", e);
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                    continue;
-                }
-            };
-
-            for symbol in symbols {
-                match client
-                    .api_v1_market_candles(symbol.symbol.clone(), "1hour".to_string())
-                    .await
-                {
-                    Ok(candles) => {
-                        if candles.is_empty() {
-                            continue;
-                        }
-
-                        let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
-                        "INSERT INTO candle 
-                        (exchange, symbol, interval, timestamp, open, high, low, close, volume, quote_volume) ",
-                    );
-
-                        qb.push_values(&candles, |mut b, d| {
-                            b.push_bind(&d.exchange)
-                                .push_bind(&d.symbol)
-                                .push_bind(&d.interval)
-                                .push_bind(&d.timestamp)
-                                .push_bind(&d.open)
-                                .push_bind(&d.high)
-                                .push_bind(&d.low)
-                                .push_bind(&d.close)
-                                .push_bind(&d.volume)
-                                .push_bind(&d.quote_volume);
-                        });
-
-                        qb.push(
-                            " ON CONFLICT (exchange, symbol, interval, timestamp)
-                          DO UPDATE SET
-                            open = EXCLUDED.open,
-                            high = EXCLUDED.high,
-                            low = EXCLUDED.low,
-                            close = EXCLUDED.close,
-                            volume = EXCLUDED.volume,
-                            quote_volume = EXCLUDED.quote_volume",
-                        );
-
-                        if let Err(e) = qb.build().execute(&pool_candle_bg).await {
-                            error!("Ошибка вставки свечей для {}: {}", symbol.symbol, e);
-                        }
-                    }
-                    Err(e) => {
-                        error!("Ошибка запроса свечей для {}: {}", symbol.symbol, e);
-                    }
-                }
-                tokio::time::sleep(Duration::from_millis(50)).await;
-            }
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            info!("Загрузили данные свечей")
-        }
-    });
 
     loop {
         tokio::time::sleep(Duration::from_secs(100)).await;

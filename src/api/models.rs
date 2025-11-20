@@ -1,5 +1,4 @@
-use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Ticker {
@@ -55,12 +54,6 @@ pub struct Currencies {
 pub struct ListCurrencies {
     pub code: String,
     pub data: Vec<Currencies>,
-}
-
-#[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct SymbolDb {
-    pub exchange: String,
-    pub symbol: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,114 +142,4 @@ pub struct Symbol {
 pub struct ListSymbols {
     pub code: String,
     pub data: Vec<Symbol>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LoanMarket {
-    pub currency: String,
-
-    #[serde(rename = "purchaseEnable")]
-    pub purchase_enable: bool,
-
-    #[serde(rename = "redeemEnable")]
-    pub redeem_enable: bool,
-
-    pub increment: String,
-
-    #[serde(rename = "minPurchaseSize")]
-    pub min_purchase_size: String,
-
-    #[serde(rename = "maxPurchaseSize")]
-    pub max_purchase_size: String,
-
-    #[serde(rename = "interestIncrement")]
-    pub interest_increment: String,
-
-    #[serde(rename = "minInterestRate")]
-    pub min_interest_rate: String,
-
-    #[serde(rename = "marketInterestRate")]
-    pub market_interest_rate: String,
-
-    #[serde(rename = "maxInterestRate")]
-    pub max_interest_rate: String,
-
-    #[serde(rename = "autoPurchaseEnable")]
-    pub auto_purchase_enable: bool,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ListLoanMarket {
-    pub code: String,
-    pub data: Vec<LoanMarket>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ApiV3MarginBorrowRateDataItem {
-    pub currency: String,
-
-    #[serde(rename = "hourlyBorrowRate")]
-    pub hourly_borrow_rate: String,
-
-    #[serde(rename = "annualizedBorrowRate")]
-    pub annualized_borrow_rate: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ApiV3MarginBorrowRateData {
-    pub items: Vec<ApiV3MarginBorrowRateDataItem>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ApiV3MarginBorrowRate {
-    pub code: String,
-    pub data: ApiV3MarginBorrowRateData,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Candle {
-    pub exchange: String,
-    pub symbol: String,
-    pub interval: String,
-    pub timestamp: String,
-    pub open: String,
-    pub high: String,
-    pub low: String,
-    pub close: String,
-    pub volume: String,
-    pub quote_volume: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ListCandle {
-    pub code: String,
-    pub data: Vec<Vec<String>>,
-}
-impl ListCandle {
-    pub fn into_candles(
-        self,
-        symbol_name: String,
-        interval: String,
-    ) -> Result<Vec<Candle>, &'static str> {
-        self.data
-            .into_iter()
-            .map(|inner| {
-                if inner.len() != 7 {
-                    return Err("Invalid candle data length");
-                }
-                Ok(Candle {
-                    exchange: String::from("kucoin"),
-                    symbol: symbol_name.clone(),
-                    interval: interval.clone(),
-                    timestamp: inner[0].clone(),
-                    open: inner[1].clone(),
-                    close: inner[2].clone(),
-                    high: inner[3].clone(),
-                    low: inner[4].clone(),
-                    volume: inner[5].clone(),
-                    quote_volume: inner[6].clone(),
-                })
-            })
-            .collect()
-    }
 }
