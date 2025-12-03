@@ -30,7 +30,7 @@ async fn main() -> Result<(), JobSchedulerError> {
 
     match JobScheduler::new().await {
         Ok(s) => {
-            match Job::new_async("0 0 * * * *", move |_, _| {
+            match Job::new_async("0 0 0 * * *", move |_, _| {
                 let pool = pool_tickers.clone();
                 let exchange = String::from("kucoin");
                 Box::pin(async move {
@@ -89,7 +89,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Err(e) => return Err(e),
             };
 
-            match Job::new_async("0 0 * * * *", move |_, _| {
+            match Job::new_async("0 0 0 * * *", move |_, _| {
                 let pool: sqlx::Pool<Postgres> = pool_currency.clone();
                 let exchange = String::from("kucoin");
                 Box::pin(async move {
@@ -154,7 +154,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Err(e) => return Err(e),
             }
 
-            match Job::new_async("0 0 * * * *", move |_, _| {
+            match Job::new_async("0 0 0 * * *", move |_, _| {
                 let pool = pool_symbols.clone();
                 let exchange = String::from("kucoin");
                 Box::pin(async move {
