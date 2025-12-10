@@ -37,11 +37,6 @@ pub struct Currencies {
 
     #[serde(rename = "fullName")]
     pub full_name: String,
-    pub precision: i16,
-    pub confirms: Option<i16>,
-
-    #[serde(rename = "contractAddress")]
-    pub contract_address: Option<String>,
 
     #[serde(rename = "isMarginEnabled")]
     pub is_margin_enabled: bool,
@@ -115,27 +110,6 @@ pub struct Symbol {
     pub taker_fee_coefficient: String,
 
     pub st: bool,
-
-    #[serde(rename = "callauctionIsEnabled")]
-    pub callauction_is_enabled: bool,
-
-    #[serde(rename = "callauctionPriceFloor")]
-    pub callauction_price_floor: Option<String>,
-
-    #[serde(rename = "callauctionPriceCeiling")]
-    pub callauction_price_ceiling: Option<String>,
-
-    #[serde(rename = "callauctionFirstStageStartTime")]
-    pub callauction_first_stage_start_time: Option<i64>,
-
-    #[serde(rename = "callauctionSecondStageStartTime")]
-    pub callauction_second_stage_start_time: Option<i64>,
-
-    #[serde(rename = "callauctionThirdStageStartTime")]
-    pub callauction_third_stage_start_time: Option<i64>,
-
-    #[serde(rename = "tradingStartTime")]
-    pub trading_start_time: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -98,8 +98,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(currencies) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO currency 
-                                    (exchange, currency, name, full_name, precision, confirms, 
-                                    contract_address, is_margin_enabled, is_debit_enabled)",
+                                    (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled)",
                                 );
 
                                 query_builder.push_values(&currencies, |mut b, d| {
@@ -107,9 +106,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.currency)
                                         .push_bind(&d.name)
                                         .push_bind(&d.full_name)
-                                        .push_bind(d.precision)
-                                        .push_bind(d.confirms)
-                                        .push_bind(&d.contract_address)
                                         .push_bind(d.is_margin_enabled)
                                         .push_bind(d.is_debit_enabled);
                                 });
@@ -119,9 +115,6 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                 DO UPDATE SET
                                                     name = EXCLUDED.name,
                                                     full_name = EXCLUDED.full_name,
-                                                    precision = EXCLUDED.precision,
-                                                    confirms = EXCLUDED.confirms,
-                                                    contract_address = EXCLUDED.contract_address,
                                                     is_margin_enabled = EXCLUDED.is_margin_enabled,
                                                     is_debit_enabled = EXCLUDED.is_debit_enabled",
                                 );
@@ -163,14 +156,11 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(symbols) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO symbol 
-                                    (exchange, symbol, name, base_currency, quote_currency, fee_currency, 
+                                    (exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency, 
                                     market, base_min_size, quote_min_size, base_max_size, quote_max_size, 
                                     base_increment, quote_increment, price_increment, price_limit_rate, 
                                     min_funds, is_margin_enabled, enable_trading, fee_category, 
-                                    maker_fee_coefficient, taker_fee_coefficient, st, callauction_is_enabled, 
-                                    callauction_price_floor, callauction_price_ceiling, 
-                                    callauction_first_stage_start_time, callauction_second_stage_start_time, 
-                                    callauction_third_stage_start_time, trading_start_time)",
+                                    maker_fee_coefficient, taker_fee_coefficient, st)",
                                 );
 
                                 query_builder.push_values(&symbols, |mut b, d| {
@@ -195,14 +185,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(d.fee_category)
                                         .push_bind(&d.maker_fee_coefficient)
                                         .push_bind(&d.taker_fee_coefficient)
-                                        .push_bind(d.st)
-                                        .push_bind(d.callauction_is_enabled)
-                                        .push_bind(&d.callauction_price_floor)
-                                        .push_bind(&d.callauction_price_ceiling)
-                                        .push_bind(d.callauction_first_stage_start_time)
-                                        .push_bind(d.callauction_second_stage_start_time)
-                                        .push_bind(d.callauction_third_stage_start_time)
-                                        .push_bind(d.trading_start_time);
+                                        .push_bind(d.st);
                                 });
 
                                 query_builder.push(
@@ -227,14 +210,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     fee_category = EXCLUDED.fee_category,
                                                     maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
                                                     taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
-                                                    st = EXCLUDED.st,
-                                                    callauction_is_enabled = EXCLUDED.callauction_is_enabled,
-                                                    callauction_price_floor = EXCLUDED.callauction_price_floor,
-                                                    callauction_price_ceiling = EXCLUDED.callauction_price_ceiling,
-                                                    callauction_first_stage_start_time = EXCLUDED.callauction_first_stage_start_time,
-                                                    callauction_second_stage_start_time = EXCLUDED.callauction_second_stage_start_time,
-                                                    callauction_third_stage_start_time = EXCLUDED.callauction_third_stage_start_time,
-                                                    trading_start_time = EXCLUDED.trading_start_time",
+                                                    st = EXCLUDED.st",
                                     );
 
                                 match query_builder.build().execute(&pool).await {
