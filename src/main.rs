@@ -60,7 +60,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     taker_fee_rate = EXCLUDED.taker_fee_rate,
                                                     maker_fee_rate = EXCLUDED.maker_fee_rate,
                                                     taker_coefficient = EXCLUDED.taker_coefficient,
-                                                    maker_coefficient = EXCLUDED.maker_coefficient",
+                                                    maker_coefficient = EXCLUDED.maker_coefficient,
+                                                    updated_at = NOW()",
                                 );
 
                                 match query_builder.build().execute(&pool).await {
@@ -116,7 +117,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     name = EXCLUDED.currency_name,
                                                     full_name = EXCLUDED.full_name,
                                                     is_margin_enabled = EXCLUDED.is_margin_enabled,
-                                                    is_debit_enabled = EXCLUDED.is_debit_enabled",
+                                                    is_debit_enabled = EXCLUDED.is_debit_enabled,
+                                                    updated_at = NOW()",
                                 );
 
                                 match query_builder.build().execute(&pool).await {
@@ -210,7 +212,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     fee_category = EXCLUDED.fee_category,
                                                     maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
                                                     taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
-                                                    st = EXCLUDED.st",
+                                                    st = EXCLUDED.st,
+                                                    updated_at = NOW()",
                                     );
 
                                 match query_builder.build().execute(&pool).await {
