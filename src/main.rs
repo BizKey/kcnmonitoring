@@ -30,7 +30,7 @@ async fn main() -> Result<(), JobSchedulerError> {
 
     match JobScheduler::new().await {
         Ok(s) => {
-            match Job::new_async("0 0 * * * *", move |_, _| {
+            match Job::new_async("0 * * * * *", move |_, _| {
                 let pool = pool_tickers.clone();
                 let exchange = String::from("kucoin");
                 Box::pin(async move {
@@ -60,8 +60,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     taker_fee_rate = EXCLUDED.taker_fee_rate,
                                                     maker_fee_rate = EXCLUDED.maker_fee_rate,
                                                     taker_coefficient = EXCLUDED.taker_coefficient,
-                                                    maker_coefficient = EXCLUDED.maker_coefficient,
-                                                    updated_at = NOW()",
+                                                    maker_coefficient = EXCLUDED.maker_coefficient",
                                 );
 
                                 match query_builder.build().execute(&pool).await {
@@ -90,7 +89,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Err(e) => return Err(e),
             };
 
-            match Job::new_async("0 0 * * * *", move |_, _| {
+            match Job::new_async("0 * * * * *", move |_, _| {
                 let pool: sqlx::Pool<Postgres> = pool_currency.clone();
                 let exchange = String::from("kucoin");
                 Box::pin(async move {
@@ -117,8 +116,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     currency_name = EXCLUDED.currency_name,
                                                     full_name = EXCLUDED.full_name,
                                                     is_margin_enabled = EXCLUDED.is_margin_enabled,
-                                                    is_debit_enabled = EXCLUDED.is_debit_enabled,
-                                                    updated_at = NOW()",
+                                                    is_debit_enabled = EXCLUDED.is_debit_enabled",
                                 );
 
                                 match query_builder.build().execute(&pool).await {
@@ -149,7 +147,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Err(e) => return Err(e),
             }
 
-            match Job::new_async("0 0 * * * *", move |_, _| {
+            match Job::new_async("0 * * * * *", move |_, _| {
                 let pool = pool_symbols.clone();
                 let exchange = String::from("kucoin");
                 Box::pin(async move {
@@ -212,8 +210,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     fee_category = EXCLUDED.fee_category,
                                                     maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
                                                     taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
-                                                    st = EXCLUDED.st,
-                                                    updated_at = NOW()",
+                                                    st = EXCLUDED.st",
                                     );
 
                                 match query_builder.build().execute(&pool).await {
