@@ -114,7 +114,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 query_builder.push(
                                     " ON CONFLICT (exchange, currency)
                                                 DO UPDATE SET
-                                                    name = EXCLUDED.currency_name,
+                                                    currency_name = EXCLUDED.currency_name,
                                                     full_name = EXCLUDED.full_name,
                                                     is_margin_enabled = EXCLUDED.is_margin_enabled,
                                                     is_debit_enabled = EXCLUDED.is_debit_enabled,
@@ -193,7 +193,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 query_builder.push(
                                         " ON CONFLICT (exchange, symbol)
                                                 DO UPDATE SET
-                                                    name = EXCLUDED.symbol_name,
+                                                    symbol_name = EXCLUDED.symbol_name,
                                                     base_currency = EXCLUDED.base_currency,
                                                     quote_currency = EXCLUDED.quote_currency,
                                                     fee_currency = EXCLUDED.fee_currency,
@@ -221,7 +221,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         info!("Success insert {} symbols", symbols.len())
                                     }
                                     Err(e) => {
-                                        error!("Error on bulk insert currencies to db: {}", e)
+                                        error!("Error on bulk insert symbols to db: {}", e)
                                     }
                                 }
                             }
