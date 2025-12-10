@@ -113,7 +113,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 query_builder.push(
                                     " ON CONFLICT (exchange, currency)
                                                 DO UPDATE SET
-                                                    name = EXCLUDED.name,
+                                                    name = EXCLUDED.currency_name,
                                                     full_name = EXCLUDED.full_name,
                                                     is_margin_enabled = EXCLUDED.is_margin_enabled,
                                                     is_debit_enabled = EXCLUDED.is_debit_enabled",
@@ -191,7 +191,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 query_builder.push(
                                         " ON CONFLICT (exchange, symbol)
                                                 DO UPDATE SET
-                                                    name = EXCLUDED.name,
+                                                    name = EXCLUDED.symbol_name,
                                                     base_currency = EXCLUDED.base_currency,
                                                     quote_currency = EXCLUDED.quote_currency,
                                                     fee_currency = EXCLUDED.fee_currency,
