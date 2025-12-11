@@ -40,7 +40,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO ticker 
                                     (exchange, symbol, symbol_name, taker_fee_rate, 
-                                    maker_fee_rate, taker_coefficient, maker_coefficient)",
+                                    maker_fee_rate, taker_coefficient, maker_coefficient, updated_at)",
                                 );
 
                                 query_builder.push_values(&tickers.ticker, |mut b, d| {
@@ -50,7 +50,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.taker_fee_rate)
                                         .push_bind(&d.maker_fee_rate)
                                         .push_bind(&d.taker_coefficient)
-                                        .push_bind(&d.maker_coefficient);
+                                        .push_bind(&d.maker_coefficient)
+                                        .push_bind(chrono::Utc::now());
                                 });
 
                                 query_builder.push(
@@ -60,7 +61,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     taker_fee_rate = EXCLUDED.taker_fee_rate,
                                                     maker_fee_rate = EXCLUDED.maker_fee_rate,
                                                     taker_coefficient = EXCLUDED.taker_coefficient,
-                                                    maker_coefficient = EXCLUDED.maker_coefficient",
+                                                    maker_coefficient = EXCLUDED.maker_coefficient,
+                                                    updated_at = CURRENT_TIMESTAMP",
                                 );
 
                                 match query_builder.build().execute(&pool).await {
@@ -98,7 +100,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                             Ok(currencies) => {
                                 let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO currency 
-                                    (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled)",
+                                    (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled, updated_at)",
                                 );
 
                                 query_builder.push_values(&currencies, |mut b, d| {
@@ -107,7 +109,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(&d.name)
                                         .push_bind(&d.full_name)
                                         .push_bind(d.is_margin_enabled)
-                                        .push_bind(d.is_debit_enabled);
+                                        .push_bind(d.is_debit_enabled)
+                                        .push_bind(chrono::Utc::now());
                                 });
 
                                 query_builder.push(
@@ -116,7 +119,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     currency_name = EXCLUDED.currency_name,
                                                     full_name = EXCLUDED.full_name,
                                                     is_margin_enabled = EXCLUDED.is_margin_enabled,
-                                                    is_debit_enabled = EXCLUDED.is_debit_enabled",
+                                                    is_debit_enabled = EXCLUDED.is_debit_enabled,
+                                                    updated_at = CURRENT_TIMESTAMP",
                                 );
 
                                 match query_builder.build().execute(&pool).await {
@@ -160,7 +164,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     market, base_min_size, quote_min_size, base_max_size, quote_max_size, 
                                     base_increment, quote_increment, price_increment, price_limit_rate, 
                                     min_funds, is_margin_enabled, enable_trading, fee_category, 
-                                    maker_fee_coefficient, taker_fee_coefficient, st)",
+                                    maker_fee_coefficient, taker_fee_coefficient, st, updated_at)",
                                 );
 
                                 query_builder.push_values(&symbols, |mut b, d| {
@@ -185,7 +189,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                         .push_bind(d.fee_category)
                                         .push_bind(&d.maker_fee_coefficient)
                                         .push_bind(&d.taker_fee_coefficient)
-                                        .push_bind(d.st);
+                                        .push_bind(d.st)
+                                        .push_bind(chrono::Utc::now());
                                 });
 
                                 query_builder.push(
@@ -210,7 +215,8 @@ async fn main() -> Result<(), JobSchedulerError> {
                                                     fee_category = EXCLUDED.fee_category,
                                                     maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
                                                     taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
-                                                    st = EXCLUDED.st",
+                                                    st = EXCLUDED.st,
+                                                    updated_at = CURRENT_TIMESTAMP",
                                     );
 
                                 match query_builder.build().execute(&pool).await {
