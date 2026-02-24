@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tokio = { version = "1.40", features = ["full"] }
+tokio = { version = "1.49", features = ["full"] }
 tokio-cron-scheduler = "0.15"
 chrono = { version = "0.4", features = ["clock"] }
 env_logger = "0.11"
