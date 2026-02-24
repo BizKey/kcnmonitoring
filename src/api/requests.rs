@@ -24,20 +24,11 @@ pub struct KuCoinClient {
 
 impl KuCoinClient {
     pub fn new(base_url: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let api_passphrase = match env::var("KUCOIN_PASS") {
-            Ok(val) => val,
-            Err(e) => return Err(e.into()),
-        };
+        let api_passphrase = env::var("KUCOIN_PASS")?;
 
-        let api_key = match env::var("KUCOIN_KEY") {
-            Ok(val) => val,
-            Err(e) => return Err(e.into()),
-        };
+        let api_key = env::var("KUCOIN_KEY")?;
 
-        let api_secret = match env::var("KUCOIN_SECRET") {
-            Ok(val) => val,
-            Err(e) => return Err(e.into()),
-        };
+        let api_secret = env::var("KUCOIN_SECRET")?;
 
         Ok(Self {
             client: Client::new(),
