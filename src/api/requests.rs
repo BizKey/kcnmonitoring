@@ -3,6 +3,7 @@ use crate::api::models::{
 };
 use base64::Engine;
 use hmac::{Hmac, Mac};
+use urlencoding::encode;
 
 use reqwest::{Client, Response};
 
@@ -39,9 +40,17 @@ impl KuCoinClient {
         })
     }
 
+    fn get_system_timestamp_ms(&self) -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64
+    }
+
     pub async fn api_v3_currencies(
         &self,
     ) -> Result<Vec<Currencies>, Box<dyn std::error::Error + Send + Sync>> {
+        let timestamp: u64 = self.get_system_timestamp_ms();
         return match self
             .make_request(
                 reqwest::Method::GET,
@@ -49,6 +58,7 @@ impl KuCoinClient {
                 None,
                 None,
                 false,
+                timestamp,
             )
             .await
         {
@@ -82,6 +92,7 @@ impl KuCoinClient {
     pub async fn api_v1_market_alltickers(
         &self,
     ) -> Result<TickerData, Box<dyn std::error::Error + Send + Sync>> {
+        let timestamp: u64 = self.get_system_timestamp_ms();
         return match self
             .make_request(
                 reqwest::Method::GET,
@@ -89,6 +100,7 @@ impl KuCoinClient {
                 None,
                 None,
                 false,
+                timestamp,
             )
             .await
         {
@@ -127,8 +139,16 @@ impl KuCoinClient {
     pub async fn api_v2_symbols(
         &self,
     ) -> Result<Vec<Symbol>, Box<dyn std::error::Error + Send + Sync>> {
+        let timestamp: u64 = self.get_system_timestamp_ms();
         return match self
-            .make_request(reqwest::Method::GET, "/api/v2/symbols", None, None, false)
+            .make_request(
+                reqwest::Method::GET,
+                "/api/v2/symbols",
+                None,
+                None,
+                false,
+                timestamp,
+            )
             .await
         {
             Ok(response) => match response.status().as_str() {
@@ -193,38 +213,36 @@ impl KuCoinClient {
         query_params: Option<HashMap<&str, &str>>,
         body: Option<HashMap<&str, &str>>,
         authenticated: bool,
+        timestamp: u64,
     ) -> Result<Response, Box<dyn std::error::Error + Send + Sync>> {
-        let url = format!("{}{}", self.base_url, endpoint);
+        let query_string: String = query_params
+            .as_ref()
+            .map(|params| {
+                let mut pairs: Vec<_> = params.iter().collect();
+                pairs.sort_by(|a, b| a.0.cmp(b.0));
+                pairs
+                    .iter()
+                    .map(|(k, v)| format!("{}={}", encode(k), encode(v)))
+                    .collect::<Vec<_>>()
+                    .join("&")
+            })
+            .unwrap_or_default();
+
+        let url = if !query_string.is_empty() {
+            format!("{}{}?{}", self.base_url, endpoint, query_string)
+        } else {
+            format!("{}{}", self.base_url, endpoint)
+        };
 
         let mut request_builder = self.client.request(method.clone(), &url);
 
-        if let Some(params) = &query_params {
-            request_builder = request_builder.query(&params);
-        }
-
-        if let Some(body_data) = &body {
-            request_builder = request_builder.json(&body_data);
-        }
-
         if authenticated {
-            let timestamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64;
-
-            let query_string = query_params
-                .as_ref()
-                .map(|params| {
-                    let mut pairs: Vec<String> =
-                        params.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
-                    pairs.sort();
-                    pairs.join("&")
-                })
-                .unwrap_or_default();
-
             let body_str = body
                 .as_ref()
-                .map(|b| serde_json::to_string(b).unwrap())
+                .map(|b| {
+                    serde_json::to_string(b).map_err(|e| format!("JSON serialization error: {}", e))
+                })
+                .transpose()?
                 .unwrap_or_default();
 
             let signature = self.generate_signature(
@@ -243,6 +261,12 @@ impl KuCoinClient {
                 .header("KC-API-TIMESTAMP", timestamp.to_string())
                 .header("KC-API-PASSPHRASE", passphrase_signature)
                 .header("KC-API-KEY-VERSION", "2");
+
+            if !body_str.is_empty() {
+                request_builder = request_builder
+                    .header("Content-Type", "application/json")
+                    .body(body_str);
+            }
         }
 
         let response = request_builder.send().await.map_err(|e| {
