@@ -1,5 +1,5 @@
 use dotenv::dotenv;
-use log::{error, info};
+use log;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, QueryBuilder};
 use std::env;
@@ -67,24 +67,29 @@ async fn main() -> Result<(), JobSchedulerError> {
 
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
-                                        info!("Success insert {} tickers", tickers.ticker.len())
+                                        log::info!(
+                                            "Success insert {} tickers",
+                                            tickers.ticker.len()
+                                        )
                                     }
-                                    Err(e) => error!("Error on bulk insert tickers to db: {}", e),
+                                    Err(e) => {
+                                        log::error!("Error on bulk insert tickers to db: {}", e)
+                                    }
                                 }
                             }
                             Err(e) => {
-                                error!("Ошибка при выполнении запроса: {}", e)
+                                log::error!("Ошибка при выполнении запроса: {}", e)
                             }
                         },
                         Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
+                            log::error!("Ошибка при выполнении запроса: {}", e)
                         }
                     };
                 })
             }) {
                 Ok(job) => match s.add(job).await {
                     Ok(_) => {
-                        info!("Добавили задачу api_v1_market_alltickers")
+                        log::info!("Добавили задачу api_v1_market_alltickers")
                     }
                     Err(e) => return Err(e),
                 },
@@ -125,26 +130,26 @@ async fn main() -> Result<(), JobSchedulerError> {
 
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
-                                        info!("Success insert {} currencies", currencies.len())
+                                        log::info!("Success insert {} currencies", currencies.len())
                                     }
                                     Err(e) => {
-                                        error!("Error on bulk insert currencies to db: {}", e)
+                                        log::error!("Error on bulk insert currencies to db: {}", e)
                                     }
                                 }
                             }
                             Err(e) => {
-                                error!("Ошибка при выполнении запроса: {}", e)
+                                log::error!("Ошибка при выполнении запроса: {}", e)
                             }
                         },
                         Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
+                            log::error!("Ошибка при выполнении запроса: {}", e)
                         }
                     };
                 })
             }) {
                 Ok(job) => match s.add(job).await {
                     Ok(_) => {
-                        info!("Добавили задачу api_v3_currencies")
+                        log::info!("Добавили задачу api_v3_currencies")
                     }
                     Err(e) => return Err(e),
                 },
@@ -221,26 +226,26 @@ async fn main() -> Result<(), JobSchedulerError> {
 
                                 match query_builder.build().execute(&pool).await {
                                     Ok(_) => {
-                                        info!("Success insert {} symbols", symbols.len())
+                                        log::info!("Success insert {} symbols", symbols.len())
                                     }
                                     Err(e) => {
-                                        error!("Error on bulk insert symbols to db: {}", e)
+                                        log::error!("Error on bulk insert symbols to db: {}", e)
                                     }
                                 }
                             }
                             Err(e) => {
-                                error!("Ошибка при выполнении запроса: {}", e)
+                                log::error!("Ошибка при выполнении запроса: {}", e)
                             }
                         },
                         Err(e) => {
-                            error!("Ошибка при выполнении запроса: {}", e)
+                            log::error!("Ошибка при выполнении запроса: {}", e)
                         }
                     };
                 })
             }) {
                 Ok(job) => match s.add(job).await {
                     Ok(_) => {
-                        info!("Добавили задачу api_v2_symbols")
+                        log::info!("Добавили задачу api_v2_symbols")
                     }
                     Err(e) => return Err(e),
                 },
