@@ -25,11 +25,20 @@ pub struct KuCoinClient {
 
 impl KuCoinClient {
     pub fn new(base_url: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let api_passphrase = env::var("KUCOIN_PASS")?;
+        let api_passphrase = match env::var("KUCOIN_PASS") {
+            Ok(api_passphrase) => api_passphrase,
+            Err(e) => return Err(e.into()),
+        };
 
-        let api_key = env::var("KUCOIN_KEY")?;
+        let api_key = match env::var("KUCOIN_KEY") {
+            Ok(api_key) => api_key,
+            Err(e) => return Err(e.into()),
+        };
 
-        let api_secret = env::var("KUCOIN_SECRET")?;
+        let api_secret = match env::var("KUCOIN_SECRET") {
+            Ok(api_secret) => api_secret,
+            Err(e) => return Err(e.into()),
+        };
 
         Ok(Self {
             client: Client::new(),
@@ -269,20 +278,29 @@ impl KuCoinClient {
             }
         }
 
-        let response = request_builder.send().await.map_err(|e| {
-            if e.is_timeout() {
-                format!("Timeout {}: {}", url, e)
-            } else if e.is_connect() {
-                format!("Error connection {}: {}", url, e)
-            } else if e.is_request() {
-                format!("Error prepare request {}: {}", url, e)
-            } else if e.is_body() {
-                format!("Error in body {}: {}", url, e)
-            } else {
-                format!("Unexpected error {}: {}", url, e)
+        match request_builder.send().await {
+            Ok(response) => Ok(response),
+            Err(e) => {
+                {
+                    if e.is_timeout() {
+                        let msg: String = format!("Timeout {}: {}", url, e);
+                        log::error!("{}", msg);
+                    } else if e.is_connect() {
+                        let msg: String = format!("Error connection {}: {}", url, e);
+                        log::error!("{}", msg);
+                    } else if e.is_request() {
+                        let msg: String = format!("Error prepare request {}: {}", url, e);
+                        log::error!("{}", msg);
+                    } else if e.is_body() {
+                        let msg: String = format!("Error in body {}: {}", url, e);
+                        log::error!("{}", msg);
+                    } else {
+                        let msg: String = format!("Unexpected error {}: {}", url, e);
+                        log::error!("{}", msg);
+                    }
+                }
+                Err(e.into())
             }
-        })?;
-
-        Ok(response)
+        }
     }
 }
