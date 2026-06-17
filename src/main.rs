@@ -1,4 +1,4 @@
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use log;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, QueryBuilder};
