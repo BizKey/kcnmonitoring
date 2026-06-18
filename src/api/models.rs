@@ -25,9 +25,10 @@ pub struct TickerData {
     pub ticker: Vec<Ticker>,
 }
 #[derive(Debug, Deserialize)]
-pub struct ListTickers {
+pub struct ApiV1MarketAllTickers {
     pub code: String,
-    pub data: TickerData,
+    pub msg: Option<String>,
+    pub data: Option<TickerData>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,9 +47,10 @@ pub struct Currencies {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ListCurrencies {
+pub struct ApiV3Currencies {
     pub code: String,
-    pub data: Vec<Currencies>,
+    pub msg: Option<String>,
+    pub data: Option<Vec<Currencies>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -113,7 +115,8 @@ pub struct Symbol {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ListSymbols {
+pub struct ApiV2Symbols {
     pub code: String,
-    pub data: Vec<Symbol>,
+    pub msg: Option<String>,
+    pub data: Option<Vec<Symbol>>,
 }
