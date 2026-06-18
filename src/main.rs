@@ -89,9 +89,7 @@ async fn main() -> Result<(), JobSchedulerError> {
         })
     }) {
         Ok(job) => match s.add(job).await {
-            Ok(_) => {
-                log::info!("Добавили задачу api_v1_market_alltickers")
-            }
+            Ok(_) => log::info!("Добавили задачу api_v1_market_alltickers"),
             Err(e) => return Err(e),
         },
         Err(e) => return Err(e),
@@ -138,20 +136,14 @@ async fn main() -> Result<(), JobSchedulerError> {
                             }
                         }
                     }
-                    Err(e) => {
-                        log::error!("Ошибка при выполнении запроса: {}", e)
-                    }
+                    Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
                 },
-                Err(e) => {
-                    log::error!("Ошибка при выполнении запроса: {}", e)
-                }
+                Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
             };
         })
     }) {
         Ok(job) => match s.add(job).await {
-            Ok(_) => {
-                log::info!("Добавили задачу api_v3_currencies")
-            }
+            Ok(_) => log::info!("Добавили задачу api_v3_currencies"),
             Err(e) => return Err(e),
         },
         Err(e) => return Err(e),
@@ -226,28 +218,18 @@ async fn main() -> Result<(), JobSchedulerError> {
                                     );
 
                         match query_builder.build().execute(&pool).await {
-                            Ok(_) => {
-                                log::info!("Success insert {} symbols", symbols.len())
-                            }
-                            Err(e) => {
-                                log::error!("Error on bulk insert symbols to db: {}", e)
-                            }
+                            Ok(_) => log::info!("Success insert {} symbols", symbols.len()),
+                            Err(e) => log::error!("Error on bulk insert symbols to db: {}", e),
                         }
                     }
-                    Err(e) => {
-                        log::error!("Ошибка при выполнении запроса: {}", e)
-                    }
+                    Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
                 },
-                Err(e) => {
-                    log::error!("Ошибка при выполнении запроса: {}", e)
-                }
+                Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
             };
         })
     }) {
         Ok(job) => match s.add(job).await {
-            Ok(_) => {
-                log::info!("Добавили задачу api_v2_symbols")
-            }
+            Ok(_) => log::info!("Добавили задачу api_v2_symbols"),
             Err(e) => return Err(e),
         },
         Err(e) => return Err(e),
