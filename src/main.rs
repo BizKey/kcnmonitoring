@@ -1,3 +1,7 @@
+use crate::api::models::{Currencies, Symbol, TickerData};
+use crate::api::requests::{
+    api_v1_market_all_tickers_get, api_v2_symbols_get, api_v3_currencies_get,
+};
 use crate::api::tools::get_env;
 use dotenvy::dotenv;
 use log;
@@ -50,28 +54,41 @@ async fn main() -> Result<(), String> {
     match Job::new_async("10 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_tickers.clone();
         Box::pin(async move {
-            match api::requests::KuCoinClient::new() {
-                Ok(client) => match client.api_v1_market_alltickers().await {
-                    Ok(tickers) => {
-                        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+            let tickers_option: Option<TickerData> = match api_v1_market_all_tickers_get().await {
+                Err(e) => {
+                    let msg = format!("Ошибка при выполнении запроса: {}", e);
+                    log::error!("{}", msg);
+                    return;
+                }
+                Ok(tickers_option) => tickers_option,
+            };
+
+            let tickers: TickerData = match tickers_option {
+                Some(tickers) => tickers,
+                None => {
+                    return;
+                }
+            };
+
+            let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO ticker 
                                     (exchange, symbol, symbol_name, taker_fee_rate, 
                                     maker_fee_rate, taker_coefficient, maker_coefficient, updated_at)",
                                 );
 
-                        query_builder.push_values(&tickers.ticker, |mut b, d| {
-                            b.push_bind(&exchange)
-                                .push_bind(&d.symbol)
-                                .push_bind(&d.symbol_name)
-                                .push_bind(&d.taker_fee_rate)
-                                .push_bind(&d.maker_fee_rate)
-                                .push_bind(&d.taker_coefficient)
-                                .push_bind(&d.maker_coefficient)
-                                .push_bind(chrono::Utc::now());
-                        });
+            query_builder.push_values(&tickers.ticker, |mut b, d| {
+                b.push_bind(&exchange)
+                    .push_bind(&d.symbol)
+                    .push_bind(&d.symbol_name)
+                    .push_bind(&d.taker_fee_rate)
+                    .push_bind(&d.maker_fee_rate)
+                    .push_bind(&d.taker_coefficient)
+                    .push_bind(&d.maker_coefficient)
+                    .push_bind(chrono::Utc::now());
+            });
 
-                        query_builder.push(
-                            " ON CONFLICT (exchange, symbol)
+            query_builder.push(
+                " ON CONFLICT (exchange, symbol)
                                                 DO UPDATE SET
                                                     symbol_name = EXCLUDED.symbol_name,
                                                     taker_fee_rate = EXCLUDED.taker_fee_rate,
@@ -79,17 +96,12 @@ async fn main() -> Result<(), String> {
                                                     taker_coefficient = EXCLUDED.taker_coefficient,
                                                     maker_coefficient = EXCLUDED.maker_coefficient,
                                                     updated_at = CURRENT_TIMESTAMP",
-                        );
+            );
 
-                        match query_builder.build().execute(&pool).await {
-                            Ok(_) => log::info!("Success insert {} tickers", tickers.ticker.len()),
-                            Err(e) => log::error!("Error on bulk insert tickers to db: {}", e),
-                        }
-                    }
-                    Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
-                },
-                Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
-            };
+            match query_builder.build().execute(&pool).await {
+                Ok(_) => log::info!("Success insert {} tickers", tickers.ticker.len()),
+                Err(e) => log::error!("Error on bulk insert tickers to db: {}", e),
+            }
         })
     }) {
         Ok(job) => match scheduler.add(job).await {
@@ -102,43 +114,51 @@ async fn main() -> Result<(), String> {
     match Job::new_async("20 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_currency.clone();
         Box::pin(async move {
-            match api::requests::KuCoinClient::new() {
-                Ok(client) => match client.api_v3_currencies().await {
-                    Ok(currencies) => {
-                        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+            let currencies_option: Option<Vec<Currencies>> = match api_v3_currencies_get().await {
+                Ok(currencies_option) => currencies_option,
+                Err(e) => {
+                    let msg = format!("Ошибка при выполнении запроса: {}", e);
+                    log::error!("{}", msg);
+                    return;
+                }
+            };
+
+            let currencies: Vec<Currencies> = match currencies_option {
+                Some(currencies_option) => currencies_option,
+                None => {
+                    return;
+                }
+            };
+
+            let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO currency
                                     (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled, updated_at)",
                                 );
 
-                        query_builder.push_values(&currencies, |mut b, d| {
-                            b.push_bind(&exchange)
-                                .push_bind(&d.currency)
-                                .push_bind(&d.name)
-                                .push_bind(&d.full_name)
-                                .push_bind(d.is_margin_enabled)
-                                .push_bind(d.is_debit_enabled)
-                                .push_bind(chrono::Utc::now());
-                        });
+            query_builder.push_values(&currencies, |mut b, d| {
+                b.push_bind(&exchange)
+                    .push_bind(&d.currency)
+                    .push_bind(&d.name)
+                    .push_bind(&d.full_name)
+                    .push_bind(d.is_margin_enabled)
+                    .push_bind(d.is_debit_enabled)
+                    .push_bind(chrono::Utc::now());
+            });
 
-                        query_builder.push(
-                            " ON CONFLICT (exchange, currency)
+            query_builder.push(
+                " ON CONFLICT (exchange, currency)
                                                 DO UPDATE SET
                                                     currency_name = EXCLUDED.currency_name,
                                                     full_name = EXCLUDED.full_name,
                                                     is_margin_enabled = EXCLUDED.is_margin_enabled,
                                                     is_debit_enabled = EXCLUDED.is_debit_enabled,
                                                     updated_at = CURRENT_TIMESTAMP",
-                        );
+            );
 
-                        match query_builder.build().execute(&pool).await {
-                            Ok(_) => log::info!("Success insert {} currencies", currencies.len()),
-                            Err(e) => log::error!("Error on bulk insert currencies to db: {}", e),
-                        }
-                    }
-                    Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
-                },
-                Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
-            };
+            match query_builder.build().execute(&pool).await {
+                Ok(_) => log::info!("Success insert {} currencies", currencies.len()),
+                Err(e) => log::error!("Error on bulk insert currencies to db: {}", e),
+            }
         })
     }) {
         Ok(job) => match scheduler.add(job).await {
@@ -151,11 +171,22 @@ async fn main() -> Result<(), String> {
     match Job::new_async("30 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_symbols.clone();
         Box::pin(async move {
-            match api::requests::KuCoinClient::new() {
-                Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
-                Ok(client) => match client.api_v2_symbols().await {
-                    Ok(symbols) => {
-                        let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+            let symbols_option: Option<Vec<Symbol>> = match api_v2_symbols_get().await {
+                Ok(symbols_option) => symbols_option,
+                Err(e) => {
+                    let msg: String = format!("Ошибка при выполнении запроса: {}", e);
+                    log::error!("{}", msg);
+                    return;
+                }
+            };
+
+            let symbols: Vec<Symbol> = match symbols_option {
+                Some(symbols_option) => symbols_option,
+                None => {
+                    return;
+                }
+            };
+            let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                                     "INSERT INTO symbol
                                     (exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency,
                                     market, base_min_size, quote_min_size, base_max_size, quote_max_size,
@@ -164,33 +195,33 @@ async fn main() -> Result<(), String> {
                                     maker_fee_coefficient, taker_fee_coefficient, st, updated_at)",
                                 );
 
-                        query_builder.push_values(&symbols, |mut b, d| {
-                            b.push_bind(&exchange)
-                                .push_bind(&d.symbol)
-                                .push_bind(&d.name)
-                                .push_bind(&d.base_currency)
-                                .push_bind(&d.quote_currency)
-                                .push_bind(&d.fee_currency)
-                                .push_bind(&d.market)
-                                .push_bind(&d.base_min_size)
-                                .push_bind(&d.quote_min_size)
-                                .push_bind(&d.base_max_size)
-                                .push_bind(&d.quote_max_size)
-                                .push_bind(&d.base_increment)
-                                .push_bind(&d.quote_increment)
-                                .push_bind(&d.price_increment)
-                                .push_bind(&d.price_limit_rate)
-                                .push_bind(&d.min_funds)
-                                .push_bind(d.is_margin_enabled)
-                                .push_bind(d.enable_trading)
-                                .push_bind(d.fee_category)
-                                .push_bind(&d.maker_fee_coefficient)
-                                .push_bind(&d.taker_fee_coefficient)
-                                .push_bind(d.st)
-                                .push_bind(chrono::Utc::now());
-                        });
+            query_builder.push_values(&symbols, |mut b, d| {
+                b.push_bind(&exchange)
+                    .push_bind(&d.symbol)
+                    .push_bind(&d.name)
+                    .push_bind(&d.base_currency)
+                    .push_bind(&d.quote_currency)
+                    .push_bind(&d.fee_currency)
+                    .push_bind(&d.market)
+                    .push_bind(&d.base_min_size)
+                    .push_bind(&d.quote_min_size)
+                    .push_bind(&d.base_max_size)
+                    .push_bind(&d.quote_max_size)
+                    .push_bind(&d.base_increment)
+                    .push_bind(&d.quote_increment)
+                    .push_bind(&d.price_increment)
+                    .push_bind(&d.price_limit_rate)
+                    .push_bind(&d.min_funds)
+                    .push_bind(d.is_margin_enabled)
+                    .push_bind(d.enable_trading)
+                    .push_bind(d.fee_category)
+                    .push_bind(&d.maker_fee_coefficient)
+                    .push_bind(&d.taker_fee_coefficient)
+                    .push_bind(d.st)
+                    .push_bind(chrono::Utc::now());
+            });
 
-                        query_builder.push(
+            query_builder.push(
                                         " ON CONFLICT (exchange, symbol)
                                                 DO UPDATE SET
                                                     symbol_name = EXCLUDED.symbol_name,
@@ -216,14 +247,10 @@ async fn main() -> Result<(), String> {
                                                     updated_at = CURRENT_TIMESTAMP",
                                     );
 
-                        match query_builder.build().execute(&pool).await {
-                            Ok(_) => log::info!("Success insert {} symbols", symbols.len()),
-                            Err(e) => log::error!("Error on bulk insert symbols to db: {}", e),
-                        }
-                    }
-                    Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
-                },
-            };
+            match query_builder.build().execute(&pool).await {
+                Ok(_) => log::info!("Success insert {} symbols", symbols.len()),
+                Err(e) => log::error!("Error on bulk insert symbols to db: {}", e),
+            }
         })
     }) {
         Ok(job) => match scheduler.add(job).await {

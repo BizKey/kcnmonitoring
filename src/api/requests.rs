@@ -1,17 +1,14 @@
 use crate::api::models::{
-    Currencies, ListCurrencies, ListSymbols, ListTickers, Symbol, TickerData,
+    ApiV1MarketAllTickers, ApiV2Symbols, ApiV3Currencies, Currencies, Symbol, TickerData,
 };
 use crate::api::tools::get_env;
 use base64::Engine;
 use hmac::{Hmac, Mac};
 use reqwest::{Client, Method, Response};
 use sha2::Sha256;
-use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
-use urlencoding::encode;
-
 type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, Clone)]
@@ -58,7 +55,7 @@ impl KuCoinClient {
             .as_millis() as u64
     }
 
-    pub async fn api_v3_currencies(&self) -> Result<Vec<Currencies>, String> {
+    async fn api_v3_currencies_get(&self) -> Result<String, String> {
         let response: Response = match self
             .make_request(
                 Method::GET,
@@ -73,33 +70,32 @@ impl KuCoinClient {
             Ok(response) => response,
             Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
-        match response.status().as_str() {
-            "200" => match response.text().await {
-                Ok(text) => match serde_json::from_str::<ListCurrencies>(&text) {
-                    Ok(r) => match r.code.as_str() {
-                        "200000" => Ok(r.data),
-                        _ => Err(format!("API error: code {}", r.code).into()),
-                    },
-                    Err(e) => {
-                        Err(format!("Error JSON deserialize:'{}' with data: '{}'", e, text).into())
-                    }
-                },
-                Err(e) => {
-                    return Err(format!("Error get text response from HTTP:'{}'", e).into());
-                }
-            },
-            status => match response.text().await {
-                Ok(text) => {
-                    Err(format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into())
-                }
-                Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
-            },
+
+        let status: reqwest::StatusCode = response.status();
+
+        let response_string: String = match response.text().await {
+            Ok(response_string) => response_string,
+            Err(e) => {
+                let msg: String = format!("Fail read text from response:{}", e);
+                log::error!("{}", msg);
+                return Err(msg);
+            }
+        };
+
+        match status.as_u16() {
+            200 => Ok(response_string),
+            status_code => {
+                let msg: String = format!(
+                    "API returned error status {}: {}",
+                    status_code, response_string
+                );
+                log::error!("{}", msg);
+                Err(msg)
+            }
         }
     }
-    pub async fn api_v1_market_alltickers(
-        &self,
-    ) -> Result<TickerData, Box<dyn std::error::Error + Send + Sync>> {
-        let response = match self
+    async fn api_v1_market_all_tickers_get(&self) -> Result<String, String> {
+        let response: Response = match self
             .make_request(
                 Method::GET,
                 "/api/v1/market/allTickers",
@@ -113,34 +109,31 @@ impl KuCoinClient {
             Ok(response) => response,
             Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
-        match response.status().as_str() {
-            "200" => match response.text().await {
-                Ok(text) => match serde_json::from_str::<ListTickers>(&text) {
-                    Ok(r) => match r.code.as_str() {
-                        "200000" => Ok(r.data),
-                        _ => Err(format!("API error: code {}", r.code).into()),
-                    },
-                    Err(e) => {
-                        Err(format!("Error JSON deserialize:'{}' with data: '{}'", e, text).into())
-                    }
-                },
-                Err(e) => {
-                    return Err(format!("Error get text response from HTTP:'{}'", e).into());
-                }
-            },
-            status => match response.text().await {
-                Ok(text) => {
-                    return Err(
-                        format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into(),
-                    );
-                }
-                Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
-            },
+
+        let status: reqwest::StatusCode = response.status();
+
+        let response_string: String = match response.text().await {
+            Ok(response_string) => response_string,
+            Err(e) => {
+                let msg: String = format!("Fail read text from response:{}", e);
+                log::error!("{}", msg);
+                return Err(msg);
+            }
+        };
+
+        match status.as_u16() {
+            200 => Ok(response_string),
+            status_code => {
+                let msg: String = format!(
+                    "API returned error status {}: {}",
+                    status_code, response_string
+                );
+                log::error!("{}", msg);
+                Err(msg)
+            }
         }
     }
-    pub async fn api_v2_symbols(
-        &self,
-    ) -> Result<Vec<Symbol>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn api_v2_symbols_get(&self) -> Result<String, String> {
         let response: Response = match self
             .make_request(
                 Method::GET,
@@ -155,29 +148,28 @@ impl KuCoinClient {
             Ok(response) => response,
             Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
-        match response.status().as_str() {
-            "200" => match response.text().await {
-                Ok(text) => match serde_json::from_str::<ListSymbols>(&text) {
-                    Ok(r) => match r.code.as_str() {
-                        "200000" => Ok(r.data),
-                        _ => Err(format!("API error: code {}", r.code).into()),
-                    },
-                    Err(e) => {
-                        Err(format!("Error JSON deserialize:'{}' with data: '{}'", e, text).into())
-                    }
-                },
-                Err(e) => {
-                    return Err(format!("Error get text response from HTTP:'{}'", e).into());
-                }
-            },
-            status => match response.text().await {
-                Ok(text) => {
-                    return Err(
-                        format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into(),
-                    );
-                }
-                Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
-            },
+
+        let status: reqwest::StatusCode = response.status();
+
+        let response_string: String = match response.text().await {
+            Ok(response_string) => response_string,
+            Err(e) => {
+                let msg: String = format!("Fail read text from response:{}", e);
+                log::error!("{}", msg);
+                return Err(msg);
+            }
+        };
+
+        match status.as_u16() {
+            200 => Ok(response_string),
+            status_code => {
+                let msg: String = format!(
+                    "API returned error status {}: {}",
+                    status_code, response_string
+                );
+                log::error!("{}", msg);
+                Err(msg)
+            }
         }
     }
 
@@ -284,6 +276,121 @@ fn get_client() -> Result<&'static KuCoinClient, String> {
         Ok(client) => Ok(client),
         Err(e) => {
             let msg: String = format!("Fail get or init KuCoinClient:{}", e);
+            log::error!("{}", msg);
+            Err(msg)
+        }
+    }
+}
+
+pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, String> {
+    let client: &KuCoinClient = match get_client() {
+        Ok(client) => client,
+        Err(e) => return Err(e),
+    };
+
+    let response_string: String = match client.api_v1_market_all_tickers_get().await {
+        Ok(response_string) => response_string,
+        Err(e) => return Err(e),
+    };
+
+    let response: ApiV1MarketAllTickers =
+        match serde_json::from_str::<ApiV1MarketAllTickers>(&response_string) {
+            Ok(res) => res,
+            Err(e) => {
+                let msg: String = format!(
+                    "Failed to deserialize response '{}' as {}: {}",
+                    response_string,
+                    stringify!(ApiV1MarketAllTickers),
+                    e
+                );
+                log::error!("{}", msg);
+                return Err(msg);
+            }
+        };
+
+    match response.code.as_str() {
+        "200000" => Ok(response.data),
+        _ => {
+            let msg: String = format!(
+                "KuCoin API error: code={}, msg={:?}, data={:?}",
+                response.code, response.msg, response.data
+            );
+            log::error!("{}", msg);
+            Err(msg)
+        }
+    }
+}
+
+pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
+    let client: &KuCoinClient = match get_client() {
+        Ok(client) => client,
+        Err(e) => return Err(e),
+    };
+
+    let response_string: String = match client.api_v2_symbols_get().await {
+        Ok(response_string) => response_string,
+        Err(e) => return Err(e),
+    };
+
+    let response: ApiV2Symbols = match serde_json::from_str::<ApiV2Symbols>(&response_string) {
+        Ok(res) => res,
+        Err(e) => {
+            let msg: String = format!(
+                "Failed to deserialize response '{}' as {}: {}",
+                response_string,
+                stringify!(ApiV2Symbols),
+                e
+            );
+            log::error!("{}", msg);
+            return Err(msg);
+        }
+    };
+
+    match response.code.as_str() {
+        "200000" => Ok(response.data),
+        _ => {
+            let msg: String = format!(
+                "KuCoin API error: code={}, msg={:?}, data={:?}",
+                response.code, response.msg, response.data
+            );
+            log::error!("{}", msg);
+            Err(msg)
+        }
+    }
+}
+
+pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>, String> {
+    let client: &KuCoinClient = match get_client() {
+        Ok(client) => client,
+        Err(e) => return Err(e),
+    };
+    let response_string: String = match client.api_v3_currencies_get().await {
+        Ok(response_string) => response_string,
+        Err(e) => return Err(e),
+    };
+
+    let response: ApiV3Currencies = match serde_json::from_str::<ApiV3Currencies>(&response_string)
+    {
+        Ok(res) => res,
+        Err(e) => {
+            let msg: String = format!(
+                "Failed to deserialize response '{}' as {}: {}",
+                response_string,
+                stringify!(ApiV3Currencies),
+                e
+            );
+            log::error!("{}", msg);
+            return Err(msg);
+        }
+    };
+
+    match response.code.as_str() {
+        "200000" => Ok(response.data),
+        _ => {
+            let msg: String = format!(
+                "KuCoin API error: code={}, msg={:?}, data={:?}",
+                response.code, response.msg, response.data
+            );
             log::error!("{}", msg);
             Err(msg)
         }
