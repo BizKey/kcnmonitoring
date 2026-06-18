@@ -70,21 +70,13 @@ async fn main() -> Result<(), JobSchedulerError> {
                         );
 
                         match query_builder.build().execute(&pool).await {
-                            Ok(_) => {
-                                log::info!("Success insert {} tickers", tickers.ticker.len())
-                            }
-                            Err(e) => {
-                                log::error!("Error on bulk insert tickers to db: {}", e)
-                            }
+                            Ok(_) => log::info!("Success insert {} tickers", tickers.ticker.len()),
+                            Err(e) => log::error!("Error on bulk insert tickers to db: {}", e),
                         }
                     }
-                    Err(e) => {
-                        log::error!("Ошибка при выполнении запроса: {}", e)
-                    }
+                    Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
                 },
-                Err(e) => {
-                    log::error!("Ошибка при выполнении запроса: {}", e)
-                }
+                Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
             };
         })
     }) {
