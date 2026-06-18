@@ -4,7 +4,7 @@ use crate::api::models::{
 use crate::api::tools::get_env;
 use base64::Engine;
 use hmac::{Hmac, Mac};
-use reqwest::{Client, Response};
+use reqwest::{Client, Method, Response};
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -64,7 +64,7 @@ impl KuCoinClient {
     ) -> Result<Vec<Currencies>, String> {
         let response = match self
             .make_request(
-                reqwest::Method::GET,
+                Method::GET,
                 "/api/v3/currencies",
                 query_string_str,
                 String::new(),
@@ -106,7 +106,7 @@ impl KuCoinClient {
         let timestamp: u64 = self.get_system_timestamp_ms();
         return match self
             .make_request(
-                reqwest::Method::GET,
+                Method::GET,
                 "/api/v1/market/allTickers",
                 None,
                 None,
@@ -152,14 +152,7 @@ impl KuCoinClient {
     ) -> Result<Vec<Symbol>, Box<dyn std::error::Error + Send + Sync>> {
         let timestamp: u64 = self.get_system_timestamp_ms();
         return match self
-            .make_request(
-                reqwest::Method::GET,
-                "/api/v2/symbols",
-                None,
-                None,
-                false,
-                timestamp,
-            )
+            .make_request(Method::GET, "/api/v2/symbols", None, None, false, timestamp)
             .await
         {
             Ok(response) => match response.status().as_str() {
