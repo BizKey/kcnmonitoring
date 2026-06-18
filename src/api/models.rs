@@ -39,6 +39,8 @@ pub struct Currencies {
     #[serde(rename = "fullName")]
     pub full_name: String,
 
+    pub precision: u64,
+
     #[serde(rename = "isMarginEnabled")]
     pub is_margin_enabled: bool,
 
