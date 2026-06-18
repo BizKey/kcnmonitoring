@@ -25,9 +25,9 @@ async fn main() -> Result<(), JobSchedulerError> {
         .await
         .expect("Failed to create pool");
 
-    let pool_tickers = pool.clone();
-    let pool_currency = pool.clone();
-    let pool_symbols = pool.clone();
+    let pool_tickers: sqlx::Pool<Postgres> = pool.clone();
+    let pool_currency: sqlx::Pool<Postgres> = pool.clone();
+    let pool_symbols: sqlx::Pool<Postgres> = pool.clone();
 
     let s = match JobScheduler::new().await {
         Ok(s) => s,
