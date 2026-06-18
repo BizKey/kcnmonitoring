@@ -1,16 +1,16 @@
 use crate::api::models::{
     Currencies, ListCurrencies, ListSymbols, ListTickers, Symbol, TickerData,
 };
+use crate::api::tools::get_env;
 use base64::Engine;
 use hmac::{Hmac, Mac};
-use urlencoding::encode;
-
 use reqwest::{Client, Response};
-
 use sha2::Sha256;
 use std::collections::HashMap;
-use std::env;
+use std::sync::OnceLock;
+use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
+use urlencoding::encode;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -24,29 +24,31 @@ pub struct KuCoinClient {
 }
 
 impl KuCoinClient {
-    pub fn new(base_url: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let api_passphrase = match env::var("KUCOIN_PASS") {
-            Ok(api_passphrase) => api_passphrase,
-            Err(e) => return Err(e.into()),
-        };
+    pub fn new() -> Result<Self, String> {
+        let base_url: String = get_env("KUCOIN_BASE_URL")?;
+        let api_key: String = get_env("KUCOIN_KEY")?;
+        let api_secret: String = get_env("KUCOIN_SECRET")?;
+        let api_passphrase: String = get_env("KUCOIN_PASS")?;
 
-        let api_key = match env::var("KUCOIN_KEY") {
-            Ok(api_key) => api_key,
-            Err(e) => return Err(e.into()),
-        };
-
-        let api_secret = match env::var("KUCOIN_SECRET") {
-            Ok(api_secret) => api_secret,
-            Err(e) => return Err(e.into()),
-        };
-
-        Ok(Self {
-            client: Client::new(),
-            api_key,
-            api_secret,
-            api_passphrase,
-            base_url,
-        })
+        match Client::builder()
+            .timeout(Duration::from_secs(15))
+            .connect_timeout(Duration::from_secs(5))
+            .tcp_keepalive(Duration::from_secs(60))
+            .build()
+        {
+            Ok(client) => Ok(Self {
+                client,
+                api_key,
+                api_secret,
+                api_passphrase,
+                base_url,
+            }),
+            Err(e) => {
+                let msg: String = format!("Get error on Client::builder:{}", e);
+                log::error!("{}", msg);
+                Err(msg)
+            }
+        }
     }
 
     fn get_system_timestamp_ms(&self) -> u64 {
@@ -301,6 +303,19 @@ impl KuCoinClient {
                 }
                 Err(e.into())
             }
+        }
+    }
+}
+
+static KUCLIENT: OnceLock<Result<KuCoinClient, String>> = OnceLock::new();
+
+fn get_client() -> Result<&'static KuCoinClient, String> {
+    match KUCLIENT.get_or_init(|| KuCoinClient::new()).as_ref() {
+        Ok(client) => Ok(client),
+        Err(e) => {
+            let msg: String = format!("Fail get or init KuCoinClient:{}", e);
+            log::error!("{}", msg);
+            Err(msg)
         }
     }
 }

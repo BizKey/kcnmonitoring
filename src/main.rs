@@ -50,7 +50,7 @@ async fn main() -> Result<(), String> {
     match Job::new_async("10 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_tickers.clone();
         Box::pin(async move {
-            match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+            match api::requests::KuCoinClient::new() {
                 Ok(client) => match client.api_v1_market_alltickers().await {
                     Ok(tickers) => {
                         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
@@ -102,7 +102,7 @@ async fn main() -> Result<(), String> {
     match Job::new_async("20 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_currency.clone();
         Box::pin(async move {
-            match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+            match api::requests::KuCoinClient::new() {
                 Ok(client) => match client.api_v3_currencies().await {
                     Ok(currencies) => {
                         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
@@ -151,7 +151,7 @@ async fn main() -> Result<(), String> {
     match Job::new_async("30 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_symbols.clone();
         Box::pin(async move {
-            match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+            match api::requests::KuCoinClient::new() {
                 Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
                 Ok(client) => match client.api_v2_symbols().await {
                     Ok(symbols) => {
