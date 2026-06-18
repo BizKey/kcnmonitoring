@@ -18,14 +18,14 @@ mod api {
     pub mod tools;
 }
 
+const EXCHANGE: &str = "kucoin";
+
 #[tokio::main]
 async fn main() -> Result<(), String> {
     env_logger::init();
     dotenv().ok();
 
     let database_url: String = get_env("DATABASE_URL")?;
-
-    let exchange = "kucoin";
 
     let pool: sqlx::Pool<Postgres> = match PgPoolOptions::new()
         .max_connections(10)
@@ -72,7 +72,7 @@ async fn main() -> Result<(), String> {
                 }
             };
 
-            match insert_tickers_to_db(pool, exchange, tickers).await {
+            match insert_tickers_to_db(pool, EXCHANGE, tickers).await {
                 Err(_) => {}
                 Ok(_) => {}
             }
@@ -104,7 +104,7 @@ async fn main() -> Result<(), String> {
                 }
             };
 
-            match insert_currencies_to_db(pool, exchange, currencies).await {
+            match insert_currencies_to_db(pool, EXCHANGE, currencies).await {
                 Err(_) => {}
                 Ok(_) => {}
             }
@@ -136,7 +136,7 @@ async fn main() -> Result<(), String> {
                 }
             };
 
-            match insert_symbols_to_db(pool, exchange, symbols).await {
+            match insert_symbols_to_db(pool, EXCHANGE, symbols).await {
                 Err(_) => {}
                 Ok(_) => {}
             }
