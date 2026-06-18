@@ -6,8 +6,8 @@ use crate::api::requests::{
 use crate::api::tools::get_env;
 use dotenvy::dotenv;
 
+use sqlx::Postgres;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{Postgres, QueryBuilder};
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
@@ -73,12 +73,8 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_tickers_to_db(pool, exchange, tickers).await {
-                Err(_) => {
-                    return;
-                }
-                Ok(_) => {
-                    return;
-                }
+                Err(_) => {}
+                Ok(_) => {}
             }
         })
     }) {
@@ -109,12 +105,8 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_currencies_to_db(pool, exchange, currencies).await {
-                Err(_) => {
-                    return;
-                }
-                Ok(_) => {
-                    return;
-                }
+                Err(_) => {}
+                Ok(_) => {}
             }
         })
     }) {
@@ -145,12 +137,8 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_symbols_to_db(pool, exchange, symbols).await {
-                Err(_) => {
-                    return;
-                }
-                Ok(_) => {
-                    return;
-                }
+                Err(_) => {}
+                Ok(_) => {}
             }
         })
     }) {

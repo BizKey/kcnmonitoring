@@ -1,8 +1,5 @@
 use crate::api::models::{Currencies, Symbol, TickerData};
-use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, QueryBuilder};
-use std::time::Duration;
-use tokio_cron_scheduler::{Job, JobScheduler};
 
 pub async fn insert_tickers_to_db(
     pool: sqlx::PgPool,
@@ -40,12 +37,12 @@ pub async fn insert_tickers_to_db(
     match query_builder.build().execute(&pool).await {
         Ok(_) => {
             log::info!("Success insert {} tickers", tickers.ticker.len());
-            return Ok(());
+            Ok(())
         }
         Err(e) => {
             let msg = format!("Error on bulk insert tickers to db: {}", e);
             log::error!("{}", msg);
-            return Err(msg);
+            Err(msg)
         }
     }
 }
@@ -118,12 +115,12 @@ pub async fn insert_symbols_to_db(
     match query_builder.build().execute(&pool).await {
         Ok(_) => {
             log::info!("Success insert {} symbols", symbols.len());
-            return Ok(());
+            Ok(())
         }
         Err(e) => {
             let msg: String = format!("Error on bulk insert symbols to db: {}", e);
             log::error!("{}", msg);
-            return Err(msg);
+            Err(msg)
         }
     }
 }
@@ -160,12 +157,12 @@ pub async fn insert_currencies_to_db(
     match query_builder.build().execute(&pool).await {
         Ok(_) => {
             log::info!("Success insert {} currencies", currencies.len());
-            return Ok(());
+            Ok(())
         }
         Err(e) => {
             let msg: String = format!("Error on bulk insert currencies to db: {}", e);
             log::error!("{}", msg);
-            return Err(msg);
+            Err(msg)
         }
     }
 }
