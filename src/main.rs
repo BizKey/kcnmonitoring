@@ -1,8 +1,8 @@
+use crate::api::tools::get_env;
 use dotenvy::dotenv;
 use log;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, QueryBuilder};
-use std::env;
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
@@ -17,13 +17,24 @@ async fn main() -> Result<(), String> {
     env_logger::init();
     dotenv().ok();
 
-    let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url: String = get_env("DATABASE_URL")?;
 
-    let pool: sqlx::Pool<Postgres> = PgPoolOptions::new()
+    let pool: sqlx::Pool<Postgres> = match PgPoolOptions::new()
         .max_connections(10)
+        .min_connections(5)
+        .acquire_timeout(Duration::from_secs(10))
+        .idle_timeout(Duration::from_secs(600))
+        .max_lifetime(Duration::from_secs(1800))
         .connect(&database_url)
         .await
-        .expect("Failed to create pool");
+    {
+        Ok(pool) => pool,
+        Err(e) => {
+            let msg: String = format!("Failed to create pg pool:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
+    };
 
     let pool_tickers: sqlx::Pool<Postgres> = pool.clone();
     let pool_currency: sqlx::Pool<Postgres> = pool.clone();
