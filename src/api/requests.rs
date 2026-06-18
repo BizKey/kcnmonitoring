@@ -60,16 +60,16 @@ impl KuCoinClient {
 
     pub async fn api_v3_currencies(
         &self,
-    ) -> Result<Vec<Currencies>, Box<dyn std::error::Error + Send + Sync>> {
-        let timestamp: u64 = self.get_system_timestamp_ms();
-        return match self
+        query_string_str: String,
+    ) -> Result<Vec<Currencies>, String> {
+        let response = match self
             .make_request(
                 reqwest::Method::GET,
                 "/api/v3/currencies",
-                None,
-                None,
+                query_string_str,
+                String::new(),
                 false,
-                timestamp,
+                self.get_system_timestamp_ms(),
             )
             .await
         {
