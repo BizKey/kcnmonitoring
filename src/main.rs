@@ -1,23 +1,23 @@
+use dotenvy::dotenv;
+use log;
+use sqlx::postgres::PgPoolOptions;
+use sqlx::{Postgres, QueryBuilder};
+use std::env;
+use std::time::Duration;
+use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
+
 mod api {
     pub mod models;
     pub mod requests;
     pub mod tools;
 }
 
-use crate::api::tools::get_env;
-use dotenvy::dotenv;
-use log;
-use sqlx::postgres::PgPoolOptions;
-use sqlx::{Postgres, QueryBuilder};
-use std::time::Duration;
-use tokio_cron_scheduler::{Job, JobScheduler};
-
 #[tokio::main]
-async fn main() -> Result<(), String> {
+async fn main() -> Result<(), JobSchedulerError> {
     env_logger::init();
     dotenv().ok();
 
-    let database_url: String = get_env("DATABASE_URL")?;
+    let database_url: String = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     let pool: sqlx::Pool<Postgres> = PgPoolOptions::new()
         .max_connections(10)
@@ -149,10 +149,12 @@ async fn main() -> Result<(), String> {
         })
     }) {
         Ok(job) => match s.add(job).await {
-            Ok(_) => log::info!("Добавили задачу api_v3_currencies"),
-            Err(e) => return Err(""),
+            Ok(_) => {
+                log::info!("Добавили задачу api_v3_currencies")
+            }
+            Err(e) => return Err(e),
         },
-        Err(e) => return Err(""),
+        Err(e) => return Err(e),
     }
 
     match Job::new_async("30 0 * * * *", move |_, _| {
@@ -246,14 +248,14 @@ async fn main() -> Result<(), String> {
             Ok(_) => {
                 log::info!("Добавили задачу api_v2_symbols")
             }
-            Err(e) => return Err(""),
+            Err(e) => return Err(e),
         },
-        Err(e) => return Err(""),
+        Err(e) => return Err(e),
     }
 
     match s.start().await {
         Ok(_) => {}
-        Err(e) => return Err(""),
+        Err(e) => return Err(e),
     }
 
     loop {
