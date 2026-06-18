@@ -68,7 +68,7 @@ impl KuCoinClient {
             .await
         {
             Ok(response) => response,
-            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
+            Err(e) => return Err(e),
         };
 
         let status: reqwest::StatusCode = response.status();
@@ -107,7 +107,7 @@ impl KuCoinClient {
             .await
         {
             Ok(response) => response,
-            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
+            Err(e) => return Err(e),
         };
 
         let status: reqwest::StatusCode = response.status();
@@ -146,7 +146,7 @@ impl KuCoinClient {
             .await
         {
             Ok(response) => response,
-            Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
+            Err(e) => return Err(e),
         };
 
         let status: reqwest::StatusCode = response.status();

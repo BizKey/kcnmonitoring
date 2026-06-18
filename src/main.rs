@@ -4,7 +4,7 @@ use crate::api::requests::{
 };
 use crate::api::tools::get_env;
 use dotenvy::dotenv;
-use log;
+
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, QueryBuilder};
 use std::time::Duration;
@@ -46,7 +46,7 @@ async fn main() -> Result<(), String> {
     let pool_currency: sqlx::Pool<Postgres> = pool.clone();
     let pool_symbols: sqlx::Pool<Postgres> = pool.clone();
 
-    let scheduler = match JobScheduler::new().await {
+    let scheduler: JobScheduler = match JobScheduler::new().await {
         Ok(scheduler) => scheduler,
         Err(e) => return Err(e.to_string()),
     };
@@ -71,13 +71,13 @@ async fn main() -> Result<(), String> {
             };
 
             let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO ticker 
-                                    (exchange, symbol, symbol_name, taker_fee_rate, 
-                                    maker_fee_rate, taker_coefficient, maker_coefficient, updated_at)",
-                                );
+                "INSERT INTO ticker 
+                (exchange, symbol, symbol_name, taker_fee_rate, 
+                maker_fee_rate, taker_coefficient, maker_coefficient, updated_at)",
+            );
 
             query_builder.push_values(&tickers.ticker, |mut b, d| {
-                b.push_bind(&exchange)
+                b.push_bind(exchange)
                     .push_bind(&d.symbol)
                     .push_bind(&d.symbol_name)
                     .push_bind(&d.taker_fee_rate)
@@ -89,13 +89,13 @@ async fn main() -> Result<(), String> {
 
             query_builder.push(
                 " ON CONFLICT (exchange, symbol)
-                                                DO UPDATE SET
-                                                    symbol_name = EXCLUDED.symbol_name,
-                                                    taker_fee_rate = EXCLUDED.taker_fee_rate,
-                                                    maker_fee_rate = EXCLUDED.maker_fee_rate,
-                                                    taker_coefficient = EXCLUDED.taker_coefficient,
-                                                    maker_coefficient = EXCLUDED.maker_coefficient,
-                                                    updated_at = CURRENT_TIMESTAMP",
+                    DO UPDATE SET
+                        symbol_name = EXCLUDED.symbol_name,
+                        taker_fee_rate = EXCLUDED.taker_fee_rate,
+                        maker_fee_rate = EXCLUDED.maker_fee_rate,
+                        taker_coefficient = EXCLUDED.taker_coefficient,
+                        maker_coefficient = EXCLUDED.maker_coefficient,
+                        updated_at = CURRENT_TIMESTAMP",
             );
 
             match query_builder.build().execute(&pool).await {
@@ -131,12 +131,12 @@ async fn main() -> Result<(), String> {
             };
 
             let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO currency
-                                    (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled, updated_at)",
+                    "INSERT INTO currency
+                    (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled, updated_at)",
                                 );
 
             query_builder.push_values(&currencies, |mut b, d| {
-                b.push_bind(&exchange)
+                b.push_bind(exchange)
                     .push_bind(&d.currency)
                     .push_bind(&d.name)
                     .push_bind(&d.full_name)
@@ -147,12 +147,12 @@ async fn main() -> Result<(), String> {
 
             query_builder.push(
                 " ON CONFLICT (exchange, currency)
-                                                DO UPDATE SET
-                                                    currency_name = EXCLUDED.currency_name,
-                                                    full_name = EXCLUDED.full_name,
-                                                    is_margin_enabled = EXCLUDED.is_margin_enabled,
-                                                    is_debit_enabled = EXCLUDED.is_debit_enabled,
-                                                    updated_at = CURRENT_TIMESTAMP",
+                    DO UPDATE SET
+                        currency_name = EXCLUDED.currency_name,
+                        full_name = EXCLUDED.full_name,
+                        is_margin_enabled = EXCLUDED.is_margin_enabled,
+                        is_debit_enabled = EXCLUDED.is_debit_enabled,
+                        updated_at = CURRENT_TIMESTAMP",
             );
 
             match query_builder.build().execute(&pool).await {
@@ -187,16 +187,16 @@ async fn main() -> Result<(), String> {
                 }
             };
             let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO symbol
-                                    (exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency,
-                                    market, base_min_size, quote_min_size, base_max_size, quote_max_size,
-                                    base_increment, quote_increment, price_increment, price_limit_rate,
-                                    min_funds, is_margin_enabled, enable_trading, fee_category,
-                                    maker_fee_coefficient, taker_fee_coefficient, st, updated_at)",
-                                );
+                "INSERT INTO symbol
+                (exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency,
+                market, base_min_size, quote_min_size, base_max_size, quote_max_size,
+                base_increment, quote_increment, price_increment, price_limit_rate,
+                min_funds, is_margin_enabled, enable_trading, fee_category,
+                maker_fee_coefficient, taker_fee_coefficient, st, updated_at)",
+            );
 
             query_builder.push_values(&symbols, |mut b, d| {
-                b.push_bind(&exchange)
+                b.push_bind(exchange)
                     .push_bind(&d.symbol)
                     .push_bind(&d.name)
                     .push_bind(&d.base_currency)
@@ -222,30 +222,30 @@ async fn main() -> Result<(), String> {
             });
 
             query_builder.push(
-                                        " ON CONFLICT (exchange, symbol)
-                                                DO UPDATE SET
-                                                    symbol_name = EXCLUDED.symbol_name,
-                                                    base_currency = EXCLUDED.base_currency,
-                                                    quote_currency = EXCLUDED.quote_currency,
-                                                    fee_currency = EXCLUDED.fee_currency,
-                                                    market = EXCLUDED.market,
-                                                    base_min_size = EXCLUDED.base_min_size,
-                                                    quote_min_size = EXCLUDED.quote_min_size,
-                                                    base_max_size = EXCLUDED.base_max_size,
-                                                    quote_max_size = EXCLUDED.quote_max_size,
-                                                    base_increment = EXCLUDED.base_increment,
-                                                    quote_increment = EXCLUDED.quote_increment,
-                                                    price_increment = EXCLUDED.price_increment,
-                                                    price_limit_rate = EXCLUDED.price_limit_rate,
-                                                    min_funds = EXCLUDED.min_funds,
-                                                    is_margin_enabled = EXCLUDED.is_margin_enabled,
-                                                    enable_trading = EXCLUDED.enable_trading,
-                                                    fee_category = EXCLUDED.fee_category,
-                                                    maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
-                                                    taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
-                                                    st = EXCLUDED.st,
-                                                    updated_at = CURRENT_TIMESTAMP",
-                                    );
+                " ON CONFLICT (exchange, symbol)
+                    DO UPDATE SET
+                        symbol_name = EXCLUDED.symbol_name,
+                        base_currency = EXCLUDED.base_currency,
+                        quote_currency = EXCLUDED.quote_currency,
+                        fee_currency = EXCLUDED.fee_currency,
+                        market = EXCLUDED.market,
+                        base_min_size = EXCLUDED.base_min_size,
+                        quote_min_size = EXCLUDED.quote_min_size,
+                        base_max_size = EXCLUDED.base_max_size,
+                        quote_max_size = EXCLUDED.quote_max_size,
+                        base_increment = EXCLUDED.base_increment,
+                        quote_increment = EXCLUDED.quote_increment,
+                        price_increment = EXCLUDED.price_increment,
+                        price_limit_rate = EXCLUDED.price_limit_rate,
+                        min_funds = EXCLUDED.min_funds,
+                        is_margin_enabled = EXCLUDED.is_margin_enabled,
+                        enable_trading = EXCLUDED.enable_trading,
+                        fee_category = EXCLUDED.fee_category,
+                        maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
+                        taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
+                        st = EXCLUDED.st,
+                        updated_at = CURRENT_TIMESTAMP",
+            );
 
             match query_builder.build().execute(&pool).await {
                 Ok(_) => log::info!("Success insert {} symbols", symbols.len()),
