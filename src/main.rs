@@ -152,6 +152,7 @@ async fn main() -> Result<(), String> {
         let pool: sqlx::Pool<Postgres> = pool_symbols.clone();
         Box::pin(async move {
             match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
+                Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
                 Ok(client) => match client.api_v2_symbols().await {
                     Ok(symbols) => {
                         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
@@ -222,7 +223,6 @@ async fn main() -> Result<(), String> {
                     }
                     Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
                 },
-                Err(e) => log::error!("Ошибка при выполнении запроса: {}", e),
             };
         })
     }) {
