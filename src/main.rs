@@ -19,6 +19,8 @@ async fn main() -> Result<(), String> {
 
     let database_url: String = get_env("DATABASE_URL")?;
 
+    let exchange = "kucoin";
+
     let pool: sqlx::Pool<Postgres> = match PgPoolOptions::new()
         .max_connections(10)
         .min_connections(5)
@@ -47,7 +49,6 @@ async fn main() -> Result<(), String> {
 
     match Job::new_async("10 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_tickers.clone();
-        let exchange: String = String::from("kucoin");
         Box::pin(async move {
             match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                 Ok(client) => match client.api_v1_market_alltickers().await {
@@ -100,7 +101,6 @@ async fn main() -> Result<(), String> {
 
     match Job::new_async("20 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_currency.clone();
-        let exchange: String = String::from("kucoin");
         Box::pin(async move {
             match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                 Ok(client) => match client.api_v3_currencies().await {
@@ -150,7 +150,6 @@ async fn main() -> Result<(), String> {
 
     match Job::new_async("30 0 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_symbols.clone();
-        let exchange: String = String::from("kucoin");
         Box::pin(async move {
             match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                 Ok(client) => match client.api_v2_symbols().await {
