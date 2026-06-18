@@ -4,7 +4,7 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, QueryBuilder};
 use std::env;
 use std::time::Duration;
-use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
+use tokio_cron_scheduler::{Job, JobScheduler};
 
 mod api {
     pub mod models;
@@ -13,7 +13,7 @@ mod api {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), JobSchedulerError> {
+async fn main() -> Result<(), String> {
     env_logger::init();
     dotenv().ok();
 
@@ -31,11 +31,11 @@ async fn main() -> Result<(), JobSchedulerError> {
 
     let s = match JobScheduler::new().await {
         Ok(s) => s,
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.to_string()),
     };
 
     match Job::new_async("10 0 * * * *", move |_, _| {
-        let pool = pool_tickers.clone();
+        let pool: sqlx::Pool<Postgres> = pool_tickers.clone();
         let exchange: String = String::from("kucoin");
         Box::pin(async move {
             match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
@@ -82,9 +82,9 @@ async fn main() -> Result<(), JobSchedulerError> {
     }) {
         Ok(job) => match s.add(job).await {
             Ok(_) => log::info!("Добавили задачу api_v1_market_alltickers"),
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.to_string()),
         },
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.to_string()),
     };
 
     match Job::new_async("20 0 * * * *", move |_, _| {
@@ -95,7 +95,7 @@ async fn main() -> Result<(), JobSchedulerError> {
                 Ok(client) => match client.api_v3_currencies().await {
                     Ok(currencies) => {
                         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO currency 
+                                    "INSERT INTO currency
                                     (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled, updated_at)",
                                 );
 
@@ -132,24 +132,24 @@ async fn main() -> Result<(), JobSchedulerError> {
     }) {
         Ok(job) => match s.add(job).await {
             Ok(_) => log::info!("Добавили задачу api_v3_currencies"),
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.to_string()),
         },
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.to_string()),
     }
 
     match Job::new_async("30 0 * * * *", move |_, _| {
-        let pool = pool_symbols.clone();
+        let pool: sqlx::Pool<Postgres> = pool_symbols.clone();
         let exchange: String = String::from("kucoin");
         Box::pin(async move {
             match api::requests::KuCoinClient::new("https://api.kucoin.com".to_string()) {
                 Ok(client) => match client.api_v2_symbols().await {
                     Ok(symbols) => {
                         let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-                                    "INSERT INTO symbol 
-                                    (exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency, 
-                                    market, base_min_size, quote_min_size, base_max_size, quote_max_size, 
-                                    base_increment, quote_increment, price_increment, price_limit_rate, 
-                                    min_funds, is_margin_enabled, enable_trading, fee_category, 
+                                    "INSERT INTO symbol
+                                    (exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency,
+                                    market, base_min_size, quote_min_size, base_max_size, quote_max_size,
+                                    base_increment, quote_increment, price_increment, price_limit_rate,
+                                    min_funds, is_margin_enabled, enable_trading, fee_category,
                                     maker_fee_coefficient, taker_fee_coefficient, st, updated_at)",
                                 );
 
@@ -218,15 +218,15 @@ async fn main() -> Result<(), JobSchedulerError> {
     }) {
         Ok(job) => match s.add(job).await {
             Ok(_) => log::info!("Добавили задачу api_v2_symbols"),
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.to_string()),
         },
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.to_string()),
     }
 
     match s.start().await {
         Ok(_) => {}
-        Err(e) => return Err(e),
-    }
+        Err(e) => return Err(e.to_string()),
+    };
 
     loop {
         tokio::time::sleep(Duration::from_secs(100)).await;
