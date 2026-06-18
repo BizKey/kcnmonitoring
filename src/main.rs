@@ -42,8 +42,8 @@ async fn main() -> Result<(), String> {
     let pool_currency: sqlx::Pool<Postgres> = pool.clone();
     let pool_symbols: sqlx::Pool<Postgres> = pool.clone();
 
-    let s = match JobScheduler::new().await {
-        Ok(s) => s,
+    let scheduler = match JobScheduler::new().await {
+        Ok(scheduler) => scheduler,
         Err(e) => return Err(e.to_string()),
     };
 
@@ -92,7 +92,7 @@ async fn main() -> Result<(), String> {
             };
         })
     }) {
-        Ok(job) => match s.add(job).await {
+        Ok(job) => match scheduler.add(job).await {
             Ok(_) => log::info!("Добавили задачу api_v1_market_alltickers"),
             Err(e) => return Err(e.to_string()),
         },
@@ -141,7 +141,7 @@ async fn main() -> Result<(), String> {
             };
         })
     }) {
-        Ok(job) => match s.add(job).await {
+        Ok(job) => match scheduler.add(job).await {
             Ok(_) => log::info!("Добавили задачу api_v3_currencies"),
             Err(e) => return Err(e.to_string()),
         },
@@ -226,14 +226,14 @@ async fn main() -> Result<(), String> {
             };
         })
     }) {
-        Ok(job) => match s.add(job).await {
+        Ok(job) => match scheduler.add(job).await {
             Ok(_) => log::info!("Добавили задачу api_v2_symbols"),
             Err(e) => return Err(e.to_string()),
         },
         Err(e) => return Err(e.to_string()),
     }
 
-    match s.start().await {
+    match scheduler.start().await {
         Ok(_) => {}
         Err(e) => return Err(e.to_string()),
     };

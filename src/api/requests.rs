@@ -58,133 +58,127 @@ impl KuCoinClient {
             .as_millis() as u64
     }
 
-    pub async fn api_v3_currencies(
-        &self,
-        query_string_str: String,
-    ) -> Result<Vec<Currencies>, String> {
-        let response = match self
+    pub async fn api_v3_currencies(&self) -> Result<Vec<Currencies>, String> {
+        let response: Response = match self
             .make_request(
                 Method::GET,
                 "/api/v3/currencies",
-                query_string_str,
+                String::new(),
                 String::new(),
                 false,
                 self.get_system_timestamp_ms(),
             )
             .await
         {
-            Ok(response) => match response.status().as_str() {
-                "200" => match response.text().await {
-                    Ok(text) => match serde_json::from_str::<ListCurrencies>(&text) {
-                        Ok(r) => match r.code.as_str() {
-                            "200000" => Ok(r.data),
-                            _ => Err(format!("API error: code {}", r.code).into()),
-                        },
-                        Err(e) => Err(format!(
-                            "Error JSON deserialize:'{}' with data: '{}'",
-                            e, text
-                        )
-                        .into()),
-                    },
-                    Err(e) => {
-                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
-                    }
-                },
-                status => match response.text().await {
-                    Ok(text) => {
-                        Err(format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into())
-                    }
-                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
-                },
-            },
+            Ok(response) => response,
             Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
+        match response.status().as_str() {
+            "200" => match response.text().await {
+                Ok(text) => match serde_json::from_str::<ListCurrencies>(&text) {
+                    Ok(r) => match r.code.as_str() {
+                        "200000" => Ok(r.data),
+                        _ => Err(format!("API error: code {}", r.code).into()),
+                    },
+                    Err(e) => {
+                        Err(format!("Error JSON deserialize:'{}' with data: '{}'", e, text).into())
+                    }
+                },
+                Err(e) => {
+                    return Err(format!("Error get text response from HTTP:'{}'", e).into());
+                }
+            },
+            status => match response.text().await {
+                Ok(text) => {
+                    Err(format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into())
+                }
+                Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
+            },
+        }
     }
     pub async fn api_v1_market_alltickers(
         &self,
     ) -> Result<TickerData, Box<dyn std::error::Error + Send + Sync>> {
-        let timestamp: u64 = self.get_system_timestamp_ms();
-        return match self
+        let response = match self
             .make_request(
                 Method::GET,
                 "/api/v1/market/allTickers",
-                None,
-                None,
+                String::new(),
+                String::new(),
                 false,
-                timestamp,
+                self.get_system_timestamp_ms(),
             )
             .await
         {
-            Ok(response) => match response.status().as_str() {
-                "200" => match response.text().await {
-                    Ok(text) => match serde_json::from_str::<ListTickers>(&text) {
-                        Ok(r) => match r.code.as_str() {
-                            "200000" => Ok(r.data),
-                            _ => Err(format!("API error: code {}", r.code).into()),
-                        },
-                        Err(e) => Err(format!(
-                            "Error JSON deserialize:'{}' with data: '{}'",
-                            e, text
-                        )
-                        .into()),
-                    },
-                    Err(e) => {
-                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
-                    }
-                },
-                status => match response.text().await {
-                    Ok(text) => {
-                        return Err(format!(
-                            "Wrong HTTP status: '{}' with body: '{}'",
-                            status, text
-                        )
-                        .into());
-                    }
-                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
-                },
-            },
+            Ok(response) => response,
             Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
+        match response.status().as_str() {
+            "200" => match response.text().await {
+                Ok(text) => match serde_json::from_str::<ListTickers>(&text) {
+                    Ok(r) => match r.code.as_str() {
+                        "200000" => Ok(r.data),
+                        _ => Err(format!("API error: code {}", r.code).into()),
+                    },
+                    Err(e) => {
+                        Err(format!("Error JSON deserialize:'{}' with data: '{}'", e, text).into())
+                    }
+                },
+                Err(e) => {
+                    return Err(format!("Error get text response from HTTP:'{}'", e).into());
+                }
+            },
+            status => match response.text().await {
+                Ok(text) => {
+                    return Err(
+                        format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into(),
+                    );
+                }
+                Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
+            },
+        }
     }
-
     pub async fn api_v2_symbols(
         &self,
     ) -> Result<Vec<Symbol>, Box<dyn std::error::Error + Send + Sync>> {
-        let timestamp: u64 = self.get_system_timestamp_ms();
-        return match self
-            .make_request(Method::GET, "/api/v2/symbols", None, None, false, timestamp)
+        let response: Response = match self
+            .make_request(
+                Method::GET,
+                "/api/v2/symbols",
+                String::new(),
+                String::new(),
+                false,
+                self.get_system_timestamp_ms(),
+            )
             .await
         {
-            Ok(response) => match response.status().as_str() {
-                "200" => match response.text().await {
-                    Ok(text) => match serde_json::from_str::<ListSymbols>(&text) {
-                        Ok(r) => match r.code.as_str() {
-                            "200000" => Ok(r.data),
-                            _ => Err(format!("API error: code {}", r.code).into()),
-                        },
-                        Err(e) => Err(format!(
-                            "Error JSON deserialize:'{}' with data: '{}'",
-                            e, text
-                        )
-                        .into()),
-                    },
-                    Err(e) => {
-                        return Err(format!("Error get text response from HTTP:'{}'", e).into());
-                    }
-                },
-                status => match response.text().await {
-                    Ok(text) => {
-                        return Err(format!(
-                            "Wrong HTTP status: '{}' with body: '{}'",
-                            status, text
-                        )
-                        .into());
-                    }
-                    Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
-                },
-            },
+            Ok(response) => response,
             Err(e) => return Err(format!("Error HTTP:'{}'", e).into()),
         };
+        match response.status().as_str() {
+            "200" => match response.text().await {
+                Ok(text) => match serde_json::from_str::<ListSymbols>(&text) {
+                    Ok(r) => match r.code.as_str() {
+                        "200000" => Ok(r.data),
+                        _ => Err(format!("API error: code {}", r.code).into()),
+                    },
+                    Err(e) => {
+                        Err(format!("Error JSON deserialize:'{}' with data: '{}'", e, text).into())
+                    }
+                },
+                Err(e) => {
+                    return Err(format!("Error get text response from HTTP:'{}'", e).into());
+                }
+            },
+            status => match response.text().await {
+                Ok(text) => {
+                    return Err(
+                        format!("Wrong HTTP status: '{}' with body: '{}'", status, text).into(),
+                    );
+                }
+                Err(_) => Err(format!("Wrong HTTP status: '{}'", status).into()),
+            },
+        }
     }
 
     fn generate_signature(&self, to_sign: &[u8]) -> Result<String, String> {
