@@ -77,8 +77,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_tickers_to_db(pool, EXCHANGE, tickers).await {
-                Err(_) => {}
-                Ok(_) => {}
+                _ => log::info!("Success tickers send to db"),
             }
         })
     }) {
@@ -119,8 +118,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_currencies_to_db(pool, EXCHANGE, currencies).await {
-                Err(_) => {}
-                Ok(_) => {}
+                _ => log::info!("Success currency send to db"),
             }
         })
     }) {
@@ -161,8 +159,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_symbols_to_db(pool, EXCHANGE, symbols).await {
-                Err(_) => {}
-                Ok(_) => {}
+                _ => log::info!("Success symbol send to db"),
             }
         })
     }) {
