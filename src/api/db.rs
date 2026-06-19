@@ -138,7 +138,7 @@ pub async fn insert_currencies_to_db(
             .push_bind(&currency.currency)
             .push_bind(&currency.name)
             .push_bind(&currency.full_name)
-            .push_bind(&currency.precision)
+            .push_bind(currency.precision)
             .push_bind(currency.is_margin_enabled)
             .push_bind(currency.is_debit_enabled)
             .push_bind(chrono::Utc::now());

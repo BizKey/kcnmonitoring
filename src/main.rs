@@ -92,7 +92,11 @@ async fn main() -> Result<(), String> {
 
     match scheduler.add(job_tickers).await {
         Ok(_) => log::info!("Добавили задачу api_v1_market_alltickers"),
-        Err(e) => return Err(e.to_string()),
+        Err(e) => {
+            let msg: String = format!("Failed add scheduler ticker:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
     }
 
     let job_currencies: Job = match Job::new_async("20 0 * * * *", move |_, _| {
@@ -130,7 +134,11 @@ async fn main() -> Result<(), String> {
 
     match scheduler.add(job_currencies).await {
         Ok(_) => log::info!("Добавили задачу api_v3_currencies"),
-        Err(e) => return Err(e.to_string()),
+        Err(e) => {
+            let msg: String = format!("Failed add scheduler currency:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
     }
 
     let job_symbols: Job = match Job::new_async("30 0 * * * *", move |_, _| {
@@ -168,12 +176,20 @@ async fn main() -> Result<(), String> {
 
     match scheduler.add(job_symbols).await {
         Ok(_) => log::info!("Добавили задачу api_v2_symbols"),
-        Err(e) => return Err(e.to_string()),
+        Err(e) => {
+            let msg: String = format!("Failed add scheduler symbols:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
     }
 
     match scheduler.start().await {
         Ok(_) => {}
-        Err(e) => return Err(e.to_string()),
+        Err(e) => {
+            let msg: String = format!("Failed start scheduler:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
     };
 
     loop {
