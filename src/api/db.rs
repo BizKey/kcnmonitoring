@@ -131,13 +131,14 @@ pub async fn insert_currencies_to_db(
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                     "INSERT INTO currency
                     (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled, updated_at)",
-                                );
+        );
 
     query_builder.push_values(&currencies, |mut b, currency| {
         b.push_bind(exchange)
             .push_bind(&currency.currency)
             .push_bind(&currency.name)
             .push_bind(&currency.full_name)
+            .push_bind(&currency.precision)
             .push_bind(currency.is_margin_enabled)
             .push_bind(currency.is_debit_enabled)
             .push_bind(chrono::Utc::now());
@@ -148,6 +149,7 @@ pub async fn insert_currencies_to_db(
             DO UPDATE SET
                 currency_name = EXCLUDED.currency_name,
                 full_name = EXCLUDED.full_name,
+                precision = EXCLUDED.precision,
                 is_margin_enabled = EXCLUDED.is_margin_enabled,
                 is_debit_enabled = EXCLUDED.is_debit_enabled,
                 updated_at = CURRENT_TIMESTAMP",
