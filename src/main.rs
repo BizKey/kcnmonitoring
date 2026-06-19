@@ -50,7 +50,11 @@ async fn main() -> Result<(), String> {
 
     let scheduler: JobScheduler = match JobScheduler::new().await {
         Ok(scheduler) => scheduler,
-        Err(e) => return Err(e.to_string()),
+        Err(e) => {
+            let msg: String = format!("Failed init scheduler:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
     };
 
     let job_tickers: Job = match Job::new_async("10 0 * * * *", move |_, _| {
@@ -79,7 +83,11 @@ async fn main() -> Result<(), String> {
         })
     }) {
         Ok(job_tickers) => job_tickers,
-        Err(e) => return Err(e.to_string()),
+        Err(e) => {
+            let msg: String = format!("Failed init scheduler ticker:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
     };
 
     match scheduler.add(job_tickers).await {
@@ -113,7 +121,11 @@ async fn main() -> Result<(), String> {
         })
     }) {
         Ok(job_currencies) => job_currencies,
-        Err(e) => return Err(e.to_string()),
+        Err(e) => {
+            let msg: String = format!("Failed init scheduler currency:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
     };
 
     match scheduler.add(job_currencies).await {
@@ -147,7 +159,11 @@ async fn main() -> Result<(), String> {
         })
     }) {
         Ok(job_symbols) => job_symbols,
-        Err(e) => return Err(e.to_string()),
+        Err(e) => {
+            let msg: String = format!("Failed init scheduler symbols:{}", e);
+            log::error!("{}", msg);
+            return Err(msg);
+        }
     };
 
     match scheduler.add(job_symbols).await {
