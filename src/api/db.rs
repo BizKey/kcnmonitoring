@@ -130,7 +130,7 @@ pub async fn insert_currencies_to_db(
 ) -> Result<(), String> {
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                     "INSERT INTO currency
-                    (exchange, currency, currency_name, full_name, is_margin_enabled, is_debit_enabled, updated_at)",
+                    (exchange, currency, currency_name, full_name, precision, is_margin_enabled, is_debit_enabled, updated_at)",
         );
 
     query_builder.push_values(&currencies, |mut b, currency| {
