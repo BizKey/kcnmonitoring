@@ -57,7 +57,7 @@ async fn main() -> Result<(), String> {
         }
     };
 
-    let job_tickers: Job = match Job::new_async("10 0 * * * *", move |_, _| {
+    let job_tickers: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_tickers.clone();
         Box::pin(async move {
             let tickers_option: Option<TickerData> = match api_v1_market_all_tickers_get().await {
@@ -99,7 +99,7 @@ async fn main() -> Result<(), String> {
         }
     }
 
-    let job_currencies: Job = match Job::new_async("20 0 * * * *", move |_, _| {
+    let job_currencies: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_currency.clone();
         Box::pin(async move {
             let currencies_option: Option<Vec<Currencies>> = match api_v3_currencies_get().await {
@@ -141,7 +141,7 @@ async fn main() -> Result<(), String> {
         }
     }
 
-    let job_symbols: Job = match Job::new_async("30 0 * * * *", move |_, _| {
+    let job_symbols: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: sqlx::Pool<Postgres> = pool_symbols.clone();
         Box::pin(async move {
             let symbols_option: Option<Vec<Symbol>> = match api_v2_symbols_get().await {
