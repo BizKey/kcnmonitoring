@@ -5,10 +5,10 @@ use crate::api::requests::{
 };
 use crate::api::tools::get_env;
 use dotenvy::dotenv;
-
 use sqlx::Postgres;
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
+use tokio::time::sleep;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 mod api {
@@ -193,6 +193,6 @@ async fn main() -> Result<(), String> {
     };
 
     loop {
-        tokio::time::sleep(Duration::from_secs(100)).await;
+        sleep(Duration::from_secs(100)).await;
     }
 }
