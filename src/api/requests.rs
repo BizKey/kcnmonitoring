@@ -48,14 +48,25 @@ impl KuCoinClient {
         }
     }
 
-    fn get_system_timestamp_ms(&self) -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as u64
+    fn get_system_timestamp_ms(&self) -> Result<u64, String> {
+        let system_time: Duration = match SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(system_time) => system_time,
+            Err(e) => {
+                let msg: String = format!("Get error get UNIX_EPOCH:{}", e);
+                log::error!("{}", msg);
+                return Err(msg);
+            }
+        };
+
+        return Ok(system_time.as_millis() as u64);
     }
 
     async fn api_v3_currencies_get(&self) -> Result<String, String> {
+        let system_timestamp_ms: u64 = match self.get_system_timestamp_ms() {
+            Ok(system_timestamp_ms) => system_timestamp_ms,
+            Err(e) => return Err(e),
+        };
+
         let response: Response = match self
             .make_request(
                 Method::GET,
@@ -63,7 +74,7 @@ impl KuCoinClient {
                 String::new(),
                 String::new(),
                 false,
-                self.get_system_timestamp_ms(),
+                system_timestamp_ms,
             )
             .await
         {
@@ -95,6 +106,11 @@ impl KuCoinClient {
         }
     }
     async fn api_v1_market_all_tickers_get(&self) -> Result<String, String> {
+        let system_timestamp_ms: u64 = match self.get_system_timestamp_ms() {
+            Ok(system_timestamp_ms) => system_timestamp_ms,
+            Err(e) => return Err(e),
+        };
+
         let response: Response = match self
             .make_request(
                 Method::GET,
@@ -102,7 +118,7 @@ impl KuCoinClient {
                 String::new(),
                 String::new(),
                 false,
-                self.get_system_timestamp_ms(),
+                system_timestamp_ms,
             )
             .await
         {
@@ -134,6 +150,11 @@ impl KuCoinClient {
         }
     }
     async fn api_v2_symbols_get(&self) -> Result<String, String> {
+        let system_timestamp_ms: u64 = match self.get_system_timestamp_ms() {
+            Ok(system_timestamp_ms) => system_timestamp_ms,
+            Err(e) => return Err(e),
+        };
+
         let response: Response = match self
             .make_request(
                 Method::GET,
@@ -141,7 +162,7 @@ impl KuCoinClient {
                 String::new(),
                 String::new(),
                 false,
-                self.get_system_timestamp_ms(),
+                system_timestamp_ms,
             )
             .await
         {
