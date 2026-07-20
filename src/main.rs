@@ -5,7 +5,6 @@ use crate::api::requests::{
 };
 use crate::api::tools::get_env;
 use dotenvy::dotenv;
-use sqlx::Postgres;
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -17,7 +16,7 @@ mod api {
     pub mod requests;
     pub mod tools;
 }
-
+use sqlx::PgPool;
 const EXCHANGE: &str = "kucoin";
 
 #[tokio::main]
@@ -27,7 +26,7 @@ async fn main() -> Result<(), String> {
 
     let database_url: String = get_env("DATABASE_URL")?;
 
-    let pool: sqlx::Pool<Postgres> = match PgPoolOptions::new()
+    let pool: PgPool = match PgPoolOptions::new()
         .max_connections(10)
         .min_connections(5)
         .acquire_timeout(Duration::from_secs(10))
@@ -44,9 +43,9 @@ async fn main() -> Result<(), String> {
         }
     };
 
-    let pool_tickers: sqlx::Pool<Postgres> = pool.clone();
-    let pool_currency: sqlx::Pool<Postgres> = pool.clone();
-    let pool_symbols: sqlx::Pool<Postgres> = pool.clone();
+    let pool_tickers: PgPool = pool.clone();
+    let pool_currency: PgPool = pool.clone();
+    let pool_symbols: PgPool = pool.clone();
 
     let scheduler: JobScheduler = match JobScheduler::new().await {
         Ok(scheduler) => scheduler,
@@ -58,7 +57,7 @@ async fn main() -> Result<(), String> {
     };
 
     let job_tickers: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: sqlx::Pool<Postgres> = pool_tickers.clone();
+        let pool: PgPool = pool_tickers.clone();
         Box::pin(async move {
             let tickers_option: Option<TickerData> = match api_v1_market_all_tickers_get().await {
                 Err(e) => {
@@ -100,7 +99,7 @@ async fn main() -> Result<(), String> {
     }
 
     let job_currencies: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: sqlx::Pool<Postgres> = pool_currency.clone();
+        let pool: PgPool = pool_currency.clone();
         Box::pin(async move {
             let currencies_option: Option<Vec<Currencies>> = match api_v3_currencies_get().await {
                 Ok(currencies_option) => currencies_option,
@@ -142,7 +141,7 @@ async fn main() -> Result<(), String> {
     }
 
     let job_symbols: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: sqlx::Pool<Postgres> = pool_symbols.clone();
+        let pool: PgPool = pool_symbols.clone();
         Box::pin(async move {
             let symbols_option: Option<Vec<Symbol>> = match api_v2_symbols_get().await {
                 Ok(symbols_option) => symbols_option,
