@@ -33,17 +33,13 @@ pub async fn insert_tickers_to_db(
                     updated_at = CURRENT_TIMESTAMP",
     );
 
-    match query_builder.build().execute(&pool).await {
-        Ok(_) => {
-            log::info!("Success insert {} tickers", tickers.ticker.len());
-            Ok(())
-        }
-        Err(e) => {
-            let msg = format!("Error on bulk insert tickers to db: {}", e);
-            log::error!("{}", msg);
-            Err(msg)
-        }
-    }
+    query_builder.build().execute(&pool).await.map_err(|e| {
+        log::error!("Error on bulk insert tickers to db: {}", e);
+        format!("Error on bulk insert tickers to db: {}", e)
+    })?;
+
+    log::info!("Success insert {} tickers", tickers.ticker.len());
+    Ok(())
 }
 pub async fn insert_symbols_to_db(
     pool: sqlx::PgPool,
@@ -111,17 +107,13 @@ pub async fn insert_symbols_to_db(
                 updated_at = CURRENT_TIMESTAMP",
     );
 
-    match query_builder.build().execute(&pool).await {
-        Ok(_) => {
-            log::info!("Success insert {} symbols", symbols.len());
-            Ok(())
-        }
-        Err(e) => {
-            let msg: String = format!("Error on bulk insert symbols to db: {}", e);
-            log::error!("{}", msg);
-            Err(msg)
-        }
-    }
+    query_builder.build().execute(&pool).await.map_err(|e| {
+        log::error!("Error on bulk insert symbols to db: {}", e);
+        format!("Error on bulk insert symbols to db: {}", e)
+    })?;
+
+    log::info!("Success insert {} symbols", symbols.len());
+    Ok(())
 }
 pub async fn insert_currencies_to_db(
     pool: sqlx::PgPool,
@@ -155,15 +147,11 @@ pub async fn insert_currencies_to_db(
                 updated_at = CURRENT_TIMESTAMP",
     );
 
-    match query_builder.build().execute(&pool).await {
-        Ok(_) => {
-            log::info!("Success insert {} currencies", currencies.len());
-            Ok(())
-        }
-        Err(e) => {
-            let msg: String = format!("Error on bulk insert currencies to db: {}", e);
-            log::error!("{}", msg);
-            Err(msg)
-        }
-    }
+    query_builder.build().execute(&pool).await.map_err(|e| {
+        log::error!("Error on bulk insert currencies to db: {}", e);
+        format!("Error on bulk insert currencies to db: {}", e)
+    })?;
+
+    log::info!("Success insert {} currencies", currencies.len());
+    Ok(())
 }

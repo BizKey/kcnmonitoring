@@ -62,12 +62,12 @@ impl KuCoinClient {
     }
 
     async fn api_v3_currencies_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = match self.get_system_timestamp_ms() {
-            Ok(system_timestamp_ms) => system_timestamp_ms,
-            Err(e) => return Err(e),
-        };
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
+            log::error!("{}", e);
+            e
+        })?;
 
-        let response: Response = match self
+        let response: Response = self
             .make_request(
                 Method::GET,
                 "/api/v3/currencies",
@@ -76,11 +76,7 @@ impl KuCoinClient {
                 false,
                 system_timestamp_ms,
             )
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         let status: reqwest::StatusCode = response.status();
 
@@ -106,12 +102,12 @@ impl KuCoinClient {
         }
     }
     async fn api_v1_market_all_tickers_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = match self.get_system_timestamp_ms() {
-            Ok(system_timestamp_ms) => system_timestamp_ms,
-            Err(e) => return Err(e),
-        };
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
+            log::error!("{}", e);
+            e
+        })?;
 
-        let response: Response = match self
+        let response: Response = self
             .make_request(
                 Method::GET,
                 "/api/v1/market/allTickers",
@@ -120,11 +116,7 @@ impl KuCoinClient {
                 false,
                 system_timestamp_ms,
             )
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         let status: reqwest::StatusCode = response.status();
 
@@ -150,12 +142,12 @@ impl KuCoinClient {
         }
     }
     async fn api_v2_symbols_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = match self.get_system_timestamp_ms() {
-            Ok(system_timestamp_ms) => system_timestamp_ms,
-            Err(e) => return Err(e),
-        };
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
+            log::error!("{}", e);
+            e
+        })?;
 
-        let response: Response = match self
+        let response: Response = self
             .make_request(
                 Method::GET,
                 "/api/v2/symbols",
@@ -164,11 +156,7 @@ impl KuCoinClient {
                 false,
                 system_timestamp_ms,
             )
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         let status: reqwest::StatusCode = response.status();
 
@@ -237,16 +225,10 @@ impl KuCoinClient {
                 str_to_sign.push_str(&body_str);
             }
 
-            let kc_api_sign: String = match self.generate_signature(str_to_sign.as_bytes()) {
-                Ok(kc_api_sign) => kc_api_sign,
-                Err(e) => return Err(e),
-            };
+            let kc_api_sign: String = self.generate_signature(str_to_sign.as_bytes())?;
 
             let kc_api_passphrase: String =
-                match self.generate_signature(self.api_passphrase.as_bytes()) {
-                    Ok(kc_api_passphrase) => kc_api_passphrase,
-                    Err(e) => return Err(e),
-                };
+                self.generate_signature(self.api_passphrase.as_bytes())?;
 
             request_builder = request_builder
                 .header("KC-API-KEY", &self.api_key)
@@ -304,15 +286,9 @@ fn get_client() -> Result<&'static KuCoinClient, String> {
 }
 
 pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, String> {
-    let client: &KuCoinClient = match get_client() {
-        Ok(client) => client,
-        Err(e) => return Err(e),
-    };
+    let client: &KuCoinClient = get_client()?;
 
-    let response_string: String = match client.api_v1_market_all_tickers_get().await {
-        Ok(response_string) => response_string,
-        Err(e) => return Err(e),
-    };
+    let response_string: String = client.api_v1_market_all_tickers_get().await?;
 
     let response: ApiV1MarketAllTickers =
         match serde_json::from_str::<ApiV1MarketAllTickers>(&response_string) {
@@ -343,15 +319,9 @@ pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, Strin
 }
 
 pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
-    let client: &KuCoinClient = match get_client() {
-        Ok(client) => client,
-        Err(e) => return Err(e),
-    };
+    let client: &KuCoinClient = get_client()?;
 
-    let response_string: String = match client.api_v2_symbols_get().await {
-        Ok(response_string) => response_string,
-        Err(e) => return Err(e),
-    };
+    let response_string: String = client.api_v2_symbols_get().await?;
 
     let response: ApiV2Symbols = match serde_json::from_str::<ApiV2Symbols>(&response_string) {
         Ok(res) => res,
@@ -381,14 +351,9 @@ pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
 }
 
 pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>, String> {
-    let client: &KuCoinClient = match get_client() {
-        Ok(client) => client,
-        Err(e) => return Err(e),
-    };
-    let response_string: String = match client.api_v3_currencies_get().await {
-        Ok(response_string) => response_string,
-        Err(e) => return Err(e),
-    };
+    let client: &KuCoinClient = get_client()?;
+
+    let response_string: String = client.api_v3_currencies_get().await?;
 
     let response: ApiV3Currencies = match serde_json::from_str::<ApiV3Currencies>(&response_string)
     {

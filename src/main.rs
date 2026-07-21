@@ -182,14 +182,10 @@ async fn main() -> Result<(), String> {
         }
     }
 
-    match scheduler.start().await {
-        Ok(_) => {}
-        Err(e) => {
-            let msg: String = format!("Failed start scheduler:{}", e);
-            log::error!("{}", msg);
-            return Err(msg);
-        }
-    };
+    scheduler.start().await.map_err(|e| {
+        log::error!("Failed start scheduler:{}", e);
+        format!("Failed start scheduler:{}", e)
+    })?;
 
     loop {
         sleep(Duration::from_secs(100)).await;
