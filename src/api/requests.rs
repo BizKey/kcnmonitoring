@@ -9,7 +9,7 @@ use sha2::Sha256;
 use std::sync::OnceLock;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::{error};
+use tracing::error;
 type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, Clone)]

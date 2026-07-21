@@ -16,18 +16,21 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-
 use sqlx::PgPool;
 use tracing::{error, info};
 const EXCHANGE: &str = "kucoin";
 
-#[tokio::main]
-async fn main() -> Result<(), String> {
+fn init_tracing() {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_target(true)
         .with_thread_ids(true)
         .init();
+}
+
+#[tokio::main]
+async fn main() -> Result<(), String> {
+    init_tracing();
     dotenv().ok();
 
     let database_url: String = get_env("DATABASE_URL")?;

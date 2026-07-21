@@ -26,6 +26,4 @@ COPY --from=builder /app/target/release/kcnmonitoring /app/kcnmonitoring
 
 USER myuser
 
-ENV RUST_LOG=INFO
-
 CMD ["/app/kcnmonitoring"]
