@@ -1,5 +1,5 @@
 use std::env;
-use tracing::{error, info};
+use tracing::{error};
 
 pub fn get_env(key: &str) -> Result<String, String> {
     match env::var(key) {

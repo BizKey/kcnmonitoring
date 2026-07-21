@@ -1,3 +1,9 @@
+mod api {
+    pub mod db;
+    pub mod models;
+    pub mod requests;
+    pub mod tools;
+}
 use crate::api::db::{insert_currencies_to_db, insert_symbols_to_db, insert_tickers_to_db};
 use crate::api::models::{Currencies, Symbol, TickerData};
 use crate::api::requests::{
@@ -10,19 +16,18 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-mod api {
-    pub mod db;
-    pub mod models;
-    pub mod requests;
-    pub mod tools;
-}
+
 use sqlx::PgPool;
 use tracing::{error, info};
 const EXCHANGE: &str = "kucoin";
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
-    env_logger::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_target(true)
+        .with_thread_ids(true)
+        .init();
     dotenv().ok();
 
     let database_url: String = get_env("DATABASE_URL")?;
