@@ -9,6 +9,7 @@ use sha2::Sha256;
 use std::sync::OnceLock;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::error;
 type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, Clone)]
@@ -42,34 +43,41 @@ impl KuCoinClient {
             }),
             Err(e) => {
                 let msg: String = format!("Get error on Client::builder:{}", e);
-                log::error!("{}", msg);
+                error!("{}", msg);
                 Err(msg)
             }
         }
     }
 
-    fn get_system_timestamp_ms(&self) -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as u64
+    fn get_system_timestamp_ms(&self) -> Result<u64, String> {
+        let system_time: Duration = match SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(system_time) => system_time,
+            Err(e) => {
+                let msg: String = format!("Get error get UNIX_EPOCH:{}", e);
+                error!("{}", msg);
+                return Err(msg);
+            }
+        };
+
+        return Ok(system_time.as_millis() as u64);
     }
 
     async fn api_v3_currencies_get(&self) -> Result<String, String> {
-        let response: Response = match self
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
+            error!("{}", e);
+            e
+        })?;
+
+        let response: Response = self
             .make_request(
                 Method::GET,
                 "/api/v3/currencies",
                 String::new(),
                 String::new(),
                 false,
-                self.get_system_timestamp_ms(),
+                system_timestamp_ms,
             )
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         let status: reqwest::StatusCode = response.status();
 
@@ -77,7 +85,7 @@ impl KuCoinClient {
             Ok(response_string) => response_string,
             Err(e) => {
                 let msg: String = format!("Fail read text from response:{}", e);
-                log::error!("{}", msg);
+                error!("{}", msg);
                 return Err(msg);
             }
         };
@@ -89,26 +97,27 @@ impl KuCoinClient {
                     "API returned error status {}: {}",
                     status_code, response_string
                 );
-                log::error!("{}", msg);
+                error!("{}", msg);
                 Err(msg)
             }
         }
     }
     async fn api_v1_market_all_tickers_get(&self) -> Result<String, String> {
-        let response: Response = match self
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
+            error!("{}", e);
+            e
+        })?;
+
+        let response: Response = self
             .make_request(
                 Method::GET,
                 "/api/v1/market/allTickers",
                 String::new(),
                 String::new(),
                 false,
-                self.get_system_timestamp_ms(),
+                system_timestamp_ms,
             )
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         let status: reqwest::StatusCode = response.status();
 
@@ -116,7 +125,7 @@ impl KuCoinClient {
             Ok(response_string) => response_string,
             Err(e) => {
                 let msg: String = format!("Fail read text from response:{}", e);
-                log::error!("{}", msg);
+                error!("{}", msg);
                 return Err(msg);
             }
         };
@@ -128,26 +137,27 @@ impl KuCoinClient {
                     "API returned error status {}: {}",
                     status_code, response_string
                 );
-                log::error!("{}", msg);
+                error!("{}", msg);
                 Err(msg)
             }
         }
     }
     async fn api_v2_symbols_get(&self) -> Result<String, String> {
-        let response: Response = match self
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
+            error!("{}", e);
+            e
+        })?;
+
+        let response: Response = self
             .make_request(
                 Method::GET,
                 "/api/v2/symbols",
                 String::new(),
                 String::new(),
                 false,
-                self.get_system_timestamp_ms(),
+                system_timestamp_ms,
             )
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => return Err(e),
-        };
+            .await?;
 
         let status: reqwest::StatusCode = response.status();
 
@@ -155,7 +165,7 @@ impl KuCoinClient {
             Ok(response_string) => response_string,
             Err(e) => {
                 let msg: String = format!("Fail read text from response:{}", e);
-                log::error!("{}", msg);
+                error!("{}", msg);
                 return Err(msg);
             }
         };
@@ -167,7 +177,7 @@ impl KuCoinClient {
                     "API returned error status {}: {}",
                     status_code, response_string
                 );
-                log::error!("{}", msg);
+                error!("{}", msg);
                 Err(msg)
             }
         }
@@ -216,16 +226,10 @@ impl KuCoinClient {
                 str_to_sign.push_str(&body_str);
             }
 
-            let kc_api_sign: String = match self.generate_signature(str_to_sign.as_bytes()) {
-                Ok(kc_api_sign) => kc_api_sign,
-                Err(e) => return Err(e),
-            };
+            let kc_api_sign: String = self.generate_signature(str_to_sign.as_bytes())?;
 
             let kc_api_passphrase: String =
-                match self.generate_signature(self.api_passphrase.as_bytes()) {
-                    Ok(kc_api_passphrase) => kc_api_passphrase,
-                    Err(e) => return Err(e),
-                };
+                self.generate_signature(self.api_passphrase.as_bytes())?;
 
             request_builder = request_builder
                 .header("KC-API-KEY", &self.api_key)
@@ -245,23 +249,23 @@ impl KuCoinClient {
             Err(e) => {
                 if e.is_timeout() {
                     let msg: String = format!("Timeout {}: {}", url, e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     Err(msg)
                 } else if e.is_connect() {
                     let msg: String = format!("Error connection {}: {}", url, e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     Err(msg)
                 } else if e.is_request() {
                     let msg: String = format!("Error prepare request {}: {}", url, e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     Err(msg)
                 } else if e.is_body() {
                     let msg: String = format!("Error in body {}: {}", url, e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     Err(msg)
                 } else {
                     let msg: String = format!("Unexpected error {}: {}", url, e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     Err(msg)
                 }
             }
@@ -276,22 +280,16 @@ fn get_client() -> Result<&'static KuCoinClient, String> {
         Ok(client) => Ok(client),
         Err(e) => {
             let msg: String = format!("Fail get or init KuCoinClient:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             Err(msg)
         }
     }
 }
 
 pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, String> {
-    let client: &KuCoinClient = match get_client() {
-        Ok(client) => client,
-        Err(e) => return Err(e),
-    };
+    let client: &KuCoinClient = get_client()?;
 
-    let response_string: String = match client.api_v1_market_all_tickers_get().await {
-        Ok(response_string) => response_string,
-        Err(e) => return Err(e),
-    };
+    let response_string: String = client.api_v1_market_all_tickers_get().await?;
 
     let response: ApiV1MarketAllTickers =
         match serde_json::from_str::<ApiV1MarketAllTickers>(&response_string) {
@@ -303,7 +301,7 @@ pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, Strin
                     stringify!(ApiV1MarketAllTickers),
                     e
                 );
-                log::error!("{}", msg);
+                error!("{}", msg);
                 return Err(msg);
             }
         };
@@ -315,22 +313,16 @@ pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, Strin
                 "KuCoin API error: code={}, msg={:?}, data={:?}",
                 response.code, response.msg, response.data
             );
-            log::error!("{}", msg);
+            error!("{}", msg);
             Err(msg)
         }
     }
 }
 
 pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
-    let client: &KuCoinClient = match get_client() {
-        Ok(client) => client,
-        Err(e) => return Err(e),
-    };
+    let client: &KuCoinClient = get_client()?;
 
-    let response_string: String = match client.api_v2_symbols_get().await {
-        Ok(response_string) => response_string,
-        Err(e) => return Err(e),
-    };
+    let response_string: String = client.api_v2_symbols_get().await?;
 
     let response: ApiV2Symbols = match serde_json::from_str::<ApiV2Symbols>(&response_string) {
         Ok(res) => res,
@@ -341,7 +333,7 @@ pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
                 stringify!(ApiV2Symbols),
                 e
             );
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
@@ -353,21 +345,16 @@ pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
                 "KuCoin API error: code={}, msg={:?}, data={:?}",
                 response.code, response.msg, response.data
             );
-            log::error!("{}", msg);
+            error!("{}", msg);
             Err(msg)
         }
     }
 }
 
 pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>, String> {
-    let client: &KuCoinClient = match get_client() {
-        Ok(client) => client,
-        Err(e) => return Err(e),
-    };
-    let response_string: String = match client.api_v3_currencies_get().await {
-        Ok(response_string) => response_string,
-        Err(e) => return Err(e),
-    };
+    let client: &KuCoinClient = get_client()?;
+
+    let response_string: String = client.api_v3_currencies_get().await?;
 
     let response: ApiV3Currencies = match serde_json::from_str::<ApiV3Currencies>(&response_string)
     {
@@ -379,7 +366,7 @@ pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>, String> 
                 stringify!(ApiV3Currencies),
                 e
             );
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
@@ -391,7 +378,7 @@ pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>, String> 
                 "KuCoin API error: code={}, msg={:?}, data={:?}",
                 response.code, response.msg, response.data
             );
-            log::error!("{}", msg);
+            error!("{}", msg);
             Err(msg)
         }
     }

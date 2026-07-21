@@ -1,3 +1,9 @@
+mod api {
+    pub mod db;
+    pub mod models;
+    pub mod requests;
+    pub mod tools;
+}
 use crate::api::db::{insert_currencies_to_db, insert_symbols_to_db, insert_tickers_to_db};
 use crate::api::models::{Currencies, Symbol, TickerData};
 use crate::api::requests::{
@@ -5,29 +11,31 @@ use crate::api::requests::{
 };
 use crate::api::tools::get_env;
 use dotenvy::dotenv;
-
-use sqlx::Postgres;
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
+use tokio::time::sleep;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-mod api {
-    pub mod db;
-    pub mod models;
-    pub mod requests;
-    pub mod tools;
-}
-
+use sqlx::PgPool;
+use tracing::{error, info};
 const EXCHANGE: &str = "kucoin";
+
+fn init_tracing() {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_target(true)
+        .with_thread_ids(true)
+        .init();
+}
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
-    env_logger::init();
+    init_tracing();
     dotenv().ok();
 
     let database_url: String = get_env("DATABASE_URL")?;
 
-    let pool: sqlx::Pool<Postgres> = match PgPoolOptions::new()
+    let pool: PgPool = match PgPoolOptions::new()
         .max_connections(10)
         .min_connections(5)
         .acquire_timeout(Duration::from_secs(10))
@@ -39,31 +47,31 @@ async fn main() -> Result<(), String> {
         Ok(pool) => pool,
         Err(e) => {
             let msg: String = format!("Failed to create pg pool:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
 
-    let pool_tickers: sqlx::Pool<Postgres> = pool.clone();
-    let pool_currency: sqlx::Pool<Postgres> = pool.clone();
-    let pool_symbols: sqlx::Pool<Postgres> = pool.clone();
+    let pool_tickers: PgPool = pool.clone();
+    let pool_currency: PgPool = pool.clone();
+    let pool_symbols: PgPool = pool.clone();
 
     let scheduler: JobScheduler = match JobScheduler::new().await {
         Ok(scheduler) => scheduler,
         Err(e) => {
             let msg: String = format!("Failed init scheduler:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
 
     let job_tickers: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: sqlx::Pool<Postgres> = pool_tickers.clone();
+        let pool: PgPool = pool_tickers.clone();
         Box::pin(async move {
             let tickers_option: Option<TickerData> = match api_v1_market_all_tickers_get().await {
                 Err(e) => {
                     let msg = format!("Ошибка при выполнении запроса: {}", e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     return;
                 }
                 Ok(tickers_option) => tickers_option,
@@ -77,7 +85,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_tickers_to_db(pool, EXCHANGE, tickers).await {
-                Ok(_) => log::info!("Success tickers send to db"),
+                Ok(_) => info!("Success tickers send to db"),
                 _ => {}
             }
         })
@@ -85,28 +93,28 @@ async fn main() -> Result<(), String> {
         Ok(job_tickers) => job_tickers,
         Err(e) => {
             let msg: String = format!("Failed init scheduler ticker:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
 
     match scheduler.add(job_tickers).await {
-        Ok(_) => log::info!("Добавили задачу api_v1_market_alltickers"),
+        Ok(_) => info!("Добавили задачу api_v1_market_alltickers"),
         Err(e) => {
             let msg: String = format!("Failed add scheduler ticker:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     }
 
     let job_currencies: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: sqlx::Pool<Postgres> = pool_currency.clone();
+        let pool: PgPool = pool_currency.clone();
         Box::pin(async move {
             let currencies_option: Option<Vec<Currencies>> = match api_v3_currencies_get().await {
                 Ok(currencies_option) => currencies_option,
                 Err(e) => {
                     let msg = format!("Ошибка при выполнении запроса: {}", e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     return;
                 }
             };
@@ -119,7 +127,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_currencies_to_db(pool, EXCHANGE, currencies).await {
-                Ok(_) => log::info!("Success currency send to db"),
+                Ok(_) => info!("Success currency send to db"),
                 _ => {}
             }
         })
@@ -127,28 +135,28 @@ async fn main() -> Result<(), String> {
         Ok(job_currencies) => job_currencies,
         Err(e) => {
             let msg: String = format!("Failed init scheduler currency:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
 
     match scheduler.add(job_currencies).await {
-        Ok(_) => log::info!("Добавили задачу api_v3_currencies"),
+        Ok(_) => info!("Добавили задачу api_v3_currencies"),
         Err(e) => {
             let msg: String = format!("Failed add scheduler currency:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     }
 
     let job_symbols: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: sqlx::Pool<Postgres> = pool_symbols.clone();
+        let pool: PgPool = pool_symbols.clone();
         Box::pin(async move {
             let symbols_option: Option<Vec<Symbol>> = match api_v2_symbols_get().await {
                 Ok(symbols_option) => symbols_option,
                 Err(e) => {
                     let msg: String = format!("Ошибка при выполнении запроса: {}", e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     return;
                 }
             };
@@ -161,7 +169,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_symbols_to_db(pool, EXCHANGE, symbols).await {
-                Ok(_) => log::info!("Success symbol send to db"),
+                Ok(_) => info!("Success symbol send to db"),
                 _ => {}
             }
         })
@@ -169,30 +177,26 @@ async fn main() -> Result<(), String> {
         Ok(job_symbols) => job_symbols,
         Err(e) => {
             let msg: String = format!("Failed init scheduler symbols:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
 
     match scheduler.add(job_symbols).await {
-        Ok(_) => log::info!("Добавили задачу api_v2_symbols"),
+        Ok(_) => info!("Добавили задачу api_v2_symbols"),
         Err(e) => {
             let msg: String = format!("Failed add scheduler symbols:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     }
 
-    match scheduler.start().await {
-        Ok(_) => {}
-        Err(e) => {
-            let msg: String = format!("Failed start scheduler:{}", e);
-            log::error!("{}", msg);
-            return Err(msg);
-        }
-    };
+    scheduler.start().await.map_err(|e| {
+        error!("Failed start scheduler:{}", e);
+        format!("Failed start scheduler:{}", e)
+    })?;
 
     loop {
-        tokio::time::sleep(Duration::from_secs(100)).await;
+        sleep(Duration::from_secs(100)).await;
     }
 }
