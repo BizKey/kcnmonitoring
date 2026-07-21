@@ -17,6 +17,7 @@ mod api {
     pub mod tools;
 }
 use sqlx::PgPool;
+use tracing::{error, info};
 const EXCHANGE: &str = "kucoin";
 
 #[tokio::main]
@@ -38,7 +39,7 @@ async fn main() -> Result<(), String> {
         Ok(pool) => pool,
         Err(e) => {
             let msg: String = format!("Failed to create pg pool:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
@@ -51,7 +52,7 @@ async fn main() -> Result<(), String> {
         Ok(scheduler) => scheduler,
         Err(e) => {
             let msg: String = format!("Failed init scheduler:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
@@ -62,7 +63,7 @@ async fn main() -> Result<(), String> {
             let tickers_option: Option<TickerData> = match api_v1_market_all_tickers_get().await {
                 Err(e) => {
                     let msg = format!("Ошибка при выполнении запроса: {}", e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     return;
                 }
                 Ok(tickers_option) => tickers_option,
@@ -76,7 +77,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_tickers_to_db(pool, EXCHANGE, tickers).await {
-                Ok(_) => log::info!("Success tickers send to db"),
+                Ok(_) => info!("Success tickers send to db"),
                 _ => {}
             }
         })
@@ -84,16 +85,16 @@ async fn main() -> Result<(), String> {
         Ok(job_tickers) => job_tickers,
         Err(e) => {
             let msg: String = format!("Failed init scheduler ticker:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
 
     match scheduler.add(job_tickers).await {
-        Ok(_) => log::info!("Добавили задачу api_v1_market_alltickers"),
+        Ok(_) => info!("Добавили задачу api_v1_market_alltickers"),
         Err(e) => {
             let msg: String = format!("Failed add scheduler ticker:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     }
@@ -105,7 +106,7 @@ async fn main() -> Result<(), String> {
                 Ok(currencies_option) => currencies_option,
                 Err(e) => {
                     let msg = format!("Ошибка при выполнении запроса: {}", e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     return;
                 }
             };
@@ -118,7 +119,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_currencies_to_db(pool, EXCHANGE, currencies).await {
-                Ok(_) => log::info!("Success currency send to db"),
+                Ok(_) => info!("Success currency send to db"),
                 _ => {}
             }
         })
@@ -126,16 +127,16 @@ async fn main() -> Result<(), String> {
         Ok(job_currencies) => job_currencies,
         Err(e) => {
             let msg: String = format!("Failed init scheduler currency:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
 
     match scheduler.add(job_currencies).await {
-        Ok(_) => log::info!("Добавили задачу api_v3_currencies"),
+        Ok(_) => info!("Добавили задачу api_v3_currencies"),
         Err(e) => {
             let msg: String = format!("Failed add scheduler currency:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     }
@@ -147,7 +148,7 @@ async fn main() -> Result<(), String> {
                 Ok(symbols_option) => symbols_option,
                 Err(e) => {
                     let msg: String = format!("Ошибка при выполнении запроса: {}", e);
-                    log::error!("{}", msg);
+                    error!("{}", msg);
                     return;
                 }
             };
@@ -160,7 +161,7 @@ async fn main() -> Result<(), String> {
             };
 
             match insert_symbols_to_db(pool, EXCHANGE, symbols).await {
-                Ok(_) => log::info!("Success symbol send to db"),
+                Ok(_) => info!("Success symbol send to db"),
                 _ => {}
             }
         })
@@ -168,22 +169,22 @@ async fn main() -> Result<(), String> {
         Ok(job_symbols) => job_symbols,
         Err(e) => {
             let msg: String = format!("Failed init scheduler symbols:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     };
 
     match scheduler.add(job_symbols).await {
-        Ok(_) => log::info!("Добавили задачу api_v2_symbols"),
+        Ok(_) => info!("Добавили задачу api_v2_symbols"),
         Err(e) => {
             let msg: String = format!("Failed add scheduler symbols:{}", e);
-            log::error!("{}", msg);
+            error!("{}", msg);
             return Err(msg);
         }
     }
 
     scheduler.start().await.map_err(|e| {
-        log::error!("Failed start scheduler:{}", e);
+        error!("Failed start scheduler:{}", e);
         format!("Failed start scheduler:{}", e)
     })?;
 
