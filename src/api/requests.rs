@@ -28,47 +28,40 @@ impl KuCoinClient {
         let api_secret: String = get_env("KUCOIN_SECRET")?;
         let api_passphrase: String = get_env("KUCOIN_PASS")?;
 
-        match Client::builder()
+        Client::builder()
             .timeout(Duration::from_secs(15))
             .connect_timeout(Duration::from_secs(5))
             .tcp_keepalive(Duration::from_secs(60))
             .build()
-        {
-            Ok(client) => Ok(Self {
+            .map(|client| Self {
                 client,
                 api_key,
                 api_secret,
                 api_passphrase,
                 base_url,
-            }),
-            Err(e) => {
+            })
+            .map_err(|e| {
                 let msg: String = format!("Get error on Client::builder:{}", e);
                 error!("{}", msg);
-                Err(msg)
-            }
-        }
+                msg
+            })
     }
 
     fn get_system_timestamp_ms(&self) -> Result<u64, String> {
-        let system_time: Duration = match SystemTime::now().duration_since(UNIX_EPOCH) {
-            Ok(system_time) => system_time,
-            Err(e) => {
-                let msg: String = format!("Get error get UNIX_EPOCH:{}", e);
+        Ok(SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| {
+                let msg: String = format!("Get error get UNIX_EPOCH:{e}");
                 error!("{}", msg);
-                return Err(msg);
-            }
-        };
-
-        return Ok(system_time.as_millis() as u64);
+                msg
+            })?
+            .as_millis() as u64)
     }
 
     async fn api_v3_currencies_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
-            error!("{}", e);
-            e
-        })?;
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
 
-        let response: Response = self
+        let response = self
             .make_request(
                 Method::GET,
                 "/api/v3/currencies",
@@ -79,34 +72,21 @@ impl KuCoinClient {
             )
             .await?;
 
-        let status: reqwest::StatusCode = response.status();
+        let status = response.status().as_u16();
 
-        let response_string: String = match response.text().await {
-            Ok(response_string) => response_string,
-            Err(e) => {
-                let msg: String = format!("Fail read text from response:{}", e);
-                error!("{}", msg);
-                return Err(msg);
-            }
-        };
+        let body = response
+            .text()
+            .await
+            .map_err(|e| format!("Fail read text from response: {e}"))?;
 
-        match status.as_u16() {
-            200 => Ok(response_string),
-            status_code => {
-                let msg: String = format!(
-                    "API returned error status {}: {}",
-                    status_code, response_string
-                );
-                error!("{}", msg);
-                Err(msg)
-            }
+        if status == 200 {
+            Ok(body)
+        } else {
+            Err(format!("API returned error status {status}: {body}"))
         }
     }
     async fn api_v1_market_all_tickers_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
-            error!("{}", e);
-            e
-        })?;
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
 
         let response: Response = self
             .make_request(
@@ -119,34 +99,21 @@ impl KuCoinClient {
             )
             .await?;
 
-        let status: reqwest::StatusCode = response.status();
+        let status = response.status().as_u16();
 
-        let response_string: String = match response.text().await {
-            Ok(response_string) => response_string,
-            Err(e) => {
-                let msg: String = format!("Fail read text from response:{}", e);
-                error!("{}", msg);
-                return Err(msg);
-            }
-        };
+        let body = response
+            .text()
+            .await
+            .map_err(|e| format!("Fail read text from response: {e}"))?;
 
-        match status.as_u16() {
-            200 => Ok(response_string),
-            status_code => {
-                let msg: String = format!(
-                    "API returned error status {}: {}",
-                    status_code, response_string
-                );
-                error!("{}", msg);
-                Err(msg)
-            }
+        if status == 200 {
+            Ok(body)
+        } else {
+            Err(format!("API returned error status {status}: {body}"))
         }
     }
     async fn api_v2_symbols_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
-            error!("{}", e);
-            e
-        })?;
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
 
         let response: Response = self
             .make_request(
@@ -159,35 +126,27 @@ impl KuCoinClient {
             )
             .await?;
 
-        let status: reqwest::StatusCode = response.status();
+        let status = response.status().as_u16();
 
-        let response_string: String = match response.text().await {
-            Ok(response_string) => response_string,
-            Err(e) => {
-                let msg: String = format!("Fail read text from response:{}", e);
-                error!("{}", msg);
-                return Err(msg);
-            }
-        };
+        let body = response
+            .text()
+            .await
+            .map_err(|e| format!("Fail read text from response: {e}"))?;
 
-        match status.as_u16() {
-            200 => Ok(response_string),
-            status_code => {
-                let msg: String = format!(
-                    "API returned error status {}: {}",
-                    status_code, response_string
-                );
-                error!("{}", msg);
-                Err(msg)
-            }
+        if status == 200 {
+            Ok(body)
+        } else {
+            Err(format!("API returned error status {status}: {body}"))
         }
     }
 
     fn generate_signature(&self, to_sign: &[u8]) -> Result<String, String> {
-        let mut mac = match HmacSha256::new_from_slice(self.api_secret.as_bytes()) {
-            Ok(mac) => mac,
-            Err(e) => return Err(format!("Fail get api secret:{}", e)),
-        };
+        let mut mac = HmacSha256::new_from_slice(self.api_secret.as_bytes()).map_err(|e| {
+            let msg = format!("Fail get api secret:{e}");
+            error!("{}", msg);
+            msg
+        })?;
+
         mac.update(to_sign);
         Ok(base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes()))
     }
@@ -244,46 +203,43 @@ impl KuCoinClient {
                     .body(body_str);
             }
         }
-        match request_builder.send().await {
-            Ok(response) => Ok(response),
-            Err(e) => {
-                if e.is_timeout() {
-                    let msg: String = format!("Timeout {}: {}", url, e);
-                    error!("{}", msg);
-                    Err(msg)
-                } else if e.is_connect() {
-                    let msg: String = format!("Error connection {}: {}", url, e);
-                    error!("{}", msg);
-                    Err(msg)
-                } else if e.is_request() {
-                    let msg: String = format!("Error prepare request {}: {}", url, e);
-                    error!("{}", msg);
-                    Err(msg)
-                } else if e.is_body() {
-                    let msg: String = format!("Error in body {}: {}", url, e);
-                    error!("{}", msg);
-                    Err(msg)
-                } else {
-                    let msg: String = format!("Unexpected error {}: {}", url, e);
-                    error!("{}", msg);
-                    Err(msg)
-                }
+        Ok(request_builder.send().await.map_err(|e| {
+            if e.is_timeout() {
+                let msg: String = format!("Timeout {url}: {e}");
+                error!("{}", msg);
+                msg
+            } else if e.is_connect() {
+                let msg: String = format!("Error connection {url}: {e}");
+                error!("{}", msg);
+                msg
+            } else if e.is_request() {
+                let msg: String = format!("Error prepare request {url}: {e}");
+                error!("{}", msg);
+                msg
+            } else if e.is_body() {
+                let msg: String = format!("Error in body {url}: {e}");
+                error!("{}", msg);
+                msg
+            } else {
+                let msg: String = format!("Unexpected error {url}: {e}");
+                error!("{}", msg);
+                msg
             }
-        }
+        })?)
     }
 }
 
 static KUCLIENT: OnceLock<Result<KuCoinClient, String>> = OnceLock::new();
 
 fn get_client() -> Result<&'static KuCoinClient, String> {
-    match KUCLIENT.get_or_init(|| KuCoinClient::new()).as_ref() {
-        Ok(client) => Ok(client),
-        Err(e) => {
-            let msg: String = format!("Fail get or init KuCoinClient:{}", e);
+    Ok(KUCLIENT
+        .get_or_init(|| KuCoinClient::new())
+        .as_ref()
+        .map_err(|e| {
+            let msg: String = format!("Fail get or init KuCoinClient:{e}");
             error!("{}", msg);
-            Err(msg)
-        }
-    }
+            msg
+        })?)
 }
 
 pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, String> {
@@ -292,19 +248,16 @@ pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, Strin
     let response_string: String = client.api_v1_market_all_tickers_get().await?;
 
     let response: ApiV1MarketAllTickers =
-        match serde_json::from_str::<ApiV1MarketAllTickers>(&response_string) {
-            Ok(res) => res,
-            Err(e) => {
-                let msg: String = format!(
-                    "Failed to deserialize response '{}' as {}: {}",
-                    response_string,
-                    stringify!(ApiV1MarketAllTickers),
-                    e
-                );
-                error!("{}", msg);
-                return Err(msg);
-            }
-        };
+        serde_json::from_str::<ApiV1MarketAllTickers>(&response_string).map_err(|e| {
+            let msg: String = format!(
+                "Failed to deserialize response '{}' as {}: {}",
+                response_string,
+                stringify!(ApiV1MarketAllTickers),
+                e
+            );
+            error!("{}", msg);
+            msg
+        })?;
 
     match response.code.as_str() {
         "200000" => Ok(response.data),
@@ -324,19 +277,14 @@ pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
 
     let response_string: String = client.api_v2_symbols_get().await?;
 
-    let response: ApiV2Symbols = match serde_json::from_str::<ApiV2Symbols>(&response_string) {
-        Ok(res) => res,
-        Err(e) => {
+    let response: ApiV2Symbols =
+        serde_json::from_str::<ApiV2Symbols>(&response_string).map_err(|e| {
             let msg: String = format!(
-                "Failed to deserialize response '{}' as {}: {}",
-                response_string,
-                stringify!(ApiV2Symbols),
-                e
+                "Failed to deserialize response '{response_string}' as (ApiV2Symbols): {e}"
             );
             error!("{}", msg);
-            return Err(msg);
-        }
-    };
+            msg
+        })?;
 
     match response.code.as_str() {
         "200000" => Ok(response.data),
@@ -356,10 +304,8 @@ pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>, String> 
 
     let response_string: String = client.api_v3_currencies_get().await?;
 
-    let response: ApiV3Currencies = match serde_json::from_str::<ApiV3Currencies>(&response_string)
-    {
-        Ok(res) => res,
-        Err(e) => {
+    let response: ApiV3Currencies = serde_json::from_str::<ApiV3Currencies>(&response_string)
+        .map_err(|e| {
             let msg: String = format!(
                 "Failed to deserialize response '{}' as {}: {}",
                 response_string,
@@ -367,9 +313,8 @@ pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>, String> 
                 e
             );
             error!("{}", msg);
-            return Err(msg);
-        }
-    };
+            msg
+        })?;
 
     match response.code.as_str() {
         "200000" => Ok(response.data),
