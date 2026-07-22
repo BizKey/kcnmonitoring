@@ -35,7 +35,7 @@ async fn main() -> Result<(), String> {
 
     let database_url: String = get_env("DATABASE_URL")?;
 
-    let pool: PgPool = match PgPoolOptions::new()
+    let pool: PgPool = PgPoolOptions::new()
         .max_connections(10)
         .min_connections(1)
         .acquire_timeout(Duration::from_secs(10))
@@ -43,29 +43,23 @@ async fn main() -> Result<(), String> {
         .max_lifetime(Duration::from_secs(1800))
         .connect(&database_url)
         .await
-    {
-        Ok(pool) => pool,
-        Err(e) => {
+        .map_err(|e| {
             let msg: String = format!("Failed to create pg pool:{}", e);
             error!("{}", msg);
-            return Err(msg);
-        }
-    };
+            msg
+        })?;
 
     let pool_tickers: PgPool = pool.clone();
     let pool_currency: PgPool = pool.clone();
     let pool_symbols: PgPool = pool.clone();
 
-    let scheduler: JobScheduler = match JobScheduler::new().await {
-        Ok(scheduler) => scheduler,
-        Err(e) => {
-            let msg: String = format!("Failed init scheduler:{}", e);
-            error!("{}", msg);
-            return Err(msg);
-        }
-    };
+    let scheduler: JobScheduler = JobScheduler::new().await.map_err(|e| {
+        let msg: String = format!("Failed init scheduler:{}", e);
+        error!("{}", msg);
+        msg
+    })?;
 
-    let job_tickers: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
+    let job_tickers: Job = Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: PgPool = pool_tickers.clone();
         Box::pin(async move {
             let tickers_option: Option<TickerData> = match api_v1_market_all_tickers_get().await {
@@ -89,25 +83,22 @@ async fn main() -> Result<(), String> {
                 _ => {}
             }
         })
-    }) {
-        Ok(job_tickers) => job_tickers,
-        Err(e) => {
-            let msg: String = format!("Failed init scheduler ticker:{}", e);
-            error!("{}", msg);
-            return Err(msg);
-        }
-    };
+    })
+    .map_err(|e| {
+        let msg: String = format!("Failed init scheduler ticker:{}", e);
+        error!("{}", msg);
+        msg
+    })?;
 
-    match scheduler.add(job_tickers).await {
-        Ok(_) => info!("Добавили задачу api_v1_market_alltickers"),
-        Err(e) => {
-            let msg: String = format!("Failed add scheduler ticker:{}", e);
-            error!("{}", msg);
-            return Err(msg);
-        }
-    }
+    scheduler.add(job_tickers).await.map_err(|e| {
+        let msg: String = format!("Failed add scheduler ticker:{}", e);
+        error!("{}", msg);
+        msg
+    })?;
 
-    let job_currencies: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
+    info!("Добавили задачу api_v1_market_alltickers");
+
+    let job_currencies: Job = Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: PgPool = pool_currency.clone();
         Box::pin(async move {
             let currencies_option: Option<Vec<Currencies>> = match api_v3_currencies_get().await {
@@ -131,25 +122,22 @@ async fn main() -> Result<(), String> {
                 _ => {}
             }
         })
-    }) {
-        Ok(job_currencies) => job_currencies,
-        Err(e) => {
-            let msg: String = format!("Failed init scheduler currency:{}", e);
-            error!("{}", msg);
-            return Err(msg);
-        }
-    };
+    })
+    .map_err(|e| {
+        let msg: String = format!("Failed init scheduler currency:{}", e);
+        error!("{}", msg);
+        msg
+    })?;
 
-    match scheduler.add(job_currencies).await {
-        Ok(_) => info!("Добавили задачу api_v3_currencies"),
-        Err(e) => {
-            let msg: String = format!("Failed add scheduler currency:{}", e);
-            error!("{}", msg);
-            return Err(msg);
-        }
-    }
+    scheduler.add(job_currencies).await.map_err(|e| {
+        let msg: String = format!("Failed add scheduler currency:{}", e);
+        error!("{}", msg);
+        msg
+    })?;
 
-    let job_symbols: Job = match Job::new_async("0 */5 * * * *", move |_, _| {
+    info!("Добавили задачу api_v3_currencies");
+
+    let job_symbols: Job = Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: PgPool = pool_symbols.clone();
         Box::pin(async move {
             let symbols_option: Option<Vec<Symbol>> = match api_v2_symbols_get().await {
@@ -173,23 +161,19 @@ async fn main() -> Result<(), String> {
                 _ => {}
             }
         })
-    }) {
-        Ok(job_symbols) => job_symbols,
-        Err(e) => {
-            let msg: String = format!("Failed init scheduler symbols:{}", e);
-            error!("{}", msg);
-            return Err(msg);
-        }
-    };
+    })
+    .map_err(|e| {
+        let msg: String = format!("Failed init scheduler symbols:{}", e);
+        error!("{}", msg);
+        msg
+    })?;
 
-    match scheduler.add(job_symbols).await {
-        Ok(_) => info!("Добавили задачу api_v2_symbols"),
-        Err(e) => {
-            let msg: String = format!("Failed add scheduler symbols:{}", e);
-            error!("{}", msg);
-            return Err(msg);
-        }
-    }
+    scheduler.add(job_symbols).await.map_err(|e| {
+        let msg: String = format!("Failed add scheduler symbols:{}", e);
+        error!("{}", msg);
+        msg
+    })?;
+    info!("Добавили задачу api_v2_symbols");
 
     scheduler.start().await.map_err(|e| {
         error!("Failed start scheduler:{}", e);
