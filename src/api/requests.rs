@@ -59,12 +59,9 @@ impl KuCoinClient {
     }
 
     async fn api_v3_currencies_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
-            error!("{}", e);
-            e
-        })?;
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
 
-        let response: Response = self
+        let response = self
             .make_request(
                 Method::GET,
                 "/api/v3/currencies",
@@ -75,31 +72,21 @@ impl KuCoinClient {
             )
             .await?;
 
-        let status: reqwest::StatusCode = response.status();
+        let status = response.status().as_u16();
 
-        let response_string: String = response.text().await.map_err(|e| {
-            let msg: String = format!("Fail read text from response:{e}");
-            error!("{}", msg);
-            msg
-        })?;
+        let body = response
+            .text()
+            .await
+            .map_err(|e| format!("Fail read text from response: {e}"))?;
 
-        match status.as_u16() {
-            200 => Ok(response_string),
-            status_code => {
-                let msg: String = format!(
-                    "API returned error status {}: {}",
-                    status_code, response_string
-                );
-                error!("{}", msg);
-                Err(msg)
-            }
+        if status == 200 {
+            Ok(body)
+        } else {
+            Err(format!("API returned error status {status}: {body}"))
         }
     }
     async fn api_v1_market_all_tickers_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
-            error!("{}", e);
-            e
-        })?;
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
 
         let response: Response = self
             .make_request(
@@ -112,31 +99,21 @@ impl KuCoinClient {
             )
             .await?;
 
-        let status: reqwest::StatusCode = response.status();
+        let status = response.status().as_u16();
 
-        let response_string: String = response.text().await.map_err(|e| {
-            let msg: String = format!("Fail read text from response:{e}");
-            error!("{}", msg);
-            msg
-        })?;
+        let body = response
+            .text()
+            .await
+            .map_err(|e| format!("Fail read text from response: {e}"))?;
 
-        match status.as_u16() {
-            200 => Ok(response_string),
-            status_code => {
-                let msg: String = format!(
-                    "API returned error status {}: {}",
-                    status_code, response_string
-                );
-                error!("{}", msg);
-                Err(msg)
-            }
+        if status == 200 {
+            Ok(body)
+        } else {
+            Err(format!("API returned error status {status}: {body}"))
         }
     }
     async fn api_v2_symbols_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms().map_err(|e| {
-            error!("{}", e);
-            e
-        })?;
+        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
 
         let response: Response = self
             .make_request(
@@ -149,24 +126,17 @@ impl KuCoinClient {
             )
             .await?;
 
-        let status: reqwest::StatusCode = response.status();
+        let status = response.status().as_u16();
 
-        let response_string: String = response.text().await.map_err(|e| {
-            let msg: String = format!("Fail read text from response:{e}");
-            error!("{}", msg);
-            msg
-        })?;
+        let body = response
+            .text()
+            .await
+            .map_err(|e| format!("Fail read text from response: {e}"))?;
 
-        match status.as_u16() {
-            200 => Ok(response_string),
-            status_code => {
-                let msg: String = format!(
-                    "API returned error status {}: {}",
-                    status_code, response_string
-                );
-                error!("{}", msg);
-                Err(msg)
-            }
+        if status == 200 {
+            Ok(body)
+        } else {
+            Err(format!("API returned error status {status}: {body}"))
         }
     }
 
