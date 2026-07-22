@@ -62,20 +62,17 @@ async fn main() -> Result<(), String> {
     let job_tickers: Job = Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: PgPool = pool_tickers.clone();
         Box::pin(async move {
-            let tickers_option: Option<TickerData> = match api_v1_market_all_tickers_get().await {
+            let tickers: Option<TickerData> = match api_v1_market_all_tickers_get().await {
                 Err(e) => {
                     let msg = format!("Ошибка при выполнении запроса: {}", e);
                     error!("{}", msg);
                     return;
                 }
-                Ok(tickers_option) => tickers_option,
+                Ok(tickers) => tickers,
             };
 
-            let tickers: TickerData = match tickers_option {
-                Some(tickers) => tickers,
-                None => {
-                    return;
-                }
+            let Some(tickers) = tickers else {
+                return;
             };
 
             match insert_tickers_to_db(pool, EXCHANGE, tickers).await {
@@ -101,8 +98,8 @@ async fn main() -> Result<(), String> {
     let job_currencies: Job = Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: PgPool = pool_currency.clone();
         Box::pin(async move {
-            let currencies_option: Option<Vec<Currencies>> = match api_v3_currencies_get().await {
-                Ok(currencies_option) => currencies_option,
+            let currencies: Option<Vec<Currencies>> = match api_v3_currencies_get().await {
+                Ok(currencies) => currencies,
                 Err(e) => {
                     let msg = format!("Ошибка при выполнении запроса: {}", e);
                     error!("{}", msg);
@@ -110,11 +107,8 @@ async fn main() -> Result<(), String> {
                 }
             };
 
-            let currencies: Vec<Currencies> = match currencies_option {
-                Some(currencies_option) => currencies_option,
-                None => {
-                    return;
-                }
+            let Some(currencies) = currencies else {
+                return;
             };
 
             match insert_currencies_to_db(pool, EXCHANGE, currencies).await {
@@ -140,8 +134,8 @@ async fn main() -> Result<(), String> {
     let job_symbols: Job = Job::new_async("0 */5 * * * *", move |_, _| {
         let pool: PgPool = pool_symbols.clone();
         Box::pin(async move {
-            let symbols_option: Option<Vec<Symbol>> = match api_v2_symbols_get().await {
-                Ok(symbols_option) => symbols_option,
+            let symbols: Option<Vec<Symbol>> = match api_v2_symbols_get().await {
+                Ok(symbols) => symbols,
                 Err(e) => {
                     let msg: String = format!("Ошибка при выполнении запроса: {}", e);
                     error!("{}", msg);
@@ -149,11 +143,8 @@ async fn main() -> Result<(), String> {
                 }
             };
 
-            let symbols: Vec<Symbol> = match symbols_option {
-                Some(symbols_option) => symbols_option,
-                None => {
-                    return;
-                }
+            let Some(symbols) = symbols else {
+                return;
             };
 
             match insert_symbols_to_db(pool, EXCHANGE, symbols).await {
