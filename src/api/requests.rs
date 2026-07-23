@@ -23,10 +23,10 @@ pub struct KuCoinClient {
 
 impl KuCoinClient {
     pub fn new() -> Result<Self, String> {
-        let base_url: String = get_env("KUCOIN_BASE_URL")?;
-        let api_key: String = get_env("KUCOIN_KEY")?;
-        let api_secret: String = get_env("KUCOIN_SECRET")?;
-        let api_passphrase: String = get_env("KUCOIN_PASS")?;
+        let base_url = get_env("KUCOIN_BASE_URL")?;
+        let api_key = get_env("KUCOIN_KEY")?;
+        let api_secret = get_env("KUCOIN_SECRET")?;
+        let api_passphrase = get_env("KUCOIN_PASS")?;
 
         Client::builder()
             .timeout(Duration::from_secs(15))
@@ -41,7 +41,7 @@ impl KuCoinClient {
                 base_url,
             })
             .map_err(|e| {
-                let msg: String = format!("Get error on Client::builder:{}", e);
+                let msg = format!("Get error on Client::builder:{}", e);
                 error!("{}", msg);
                 msg
             })
@@ -51,7 +51,7 @@ impl KuCoinClient {
         Ok(SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|e| {
-                let msg: String = format!("Get error get UNIX_EPOCH:{e}");
+                let msg = format!("Get error get UNIX_EPOCH:{e}");
                 error!("{}", msg);
                 msg
             })?
@@ -59,7 +59,7 @@ impl KuCoinClient {
     }
 
     async fn api_v3_currencies_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
+        let system_timestamp_ms = self.get_system_timestamp_ms()?;
 
         let response = self
             .make_request(
@@ -86,9 +86,9 @@ impl KuCoinClient {
         }
     }
     async fn api_v1_market_all_tickers_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
+        let system_timestamp_ms = self.get_system_timestamp_ms()?;
 
-        let response: Response = self
+        let response = self
             .make_request(
                 Method::GET,
                 "/api/v1/market/allTickers",
@@ -113,9 +113,9 @@ impl KuCoinClient {
         }
     }
     async fn api_v2_symbols_get(&self) -> Result<String, String> {
-        let system_timestamp_ms: u64 = self.get_system_timestamp_ms()?;
+        let system_timestamp_ms = self.get_system_timestamp_ms()?;
 
-        let response: Response = self
+        let response = self
             .make_request(
                 Method::GET,
                 "/api/v2/symbols",
@@ -160,17 +160,16 @@ impl KuCoinClient {
         authenticated: bool,
         timestamp: u64,
     ) -> Result<Response, String> {
-        let url: String = if !query_string.is_empty() {
+        let url = if !query_string.is_empty() {
             format!("{}{}?{}", self.base_url, endpoint, query_string)
         } else {
             format!("{}{}", self.base_url, endpoint)
         };
 
-        let mut request_builder: reqwest::RequestBuilder =
-            self.client.request(method.clone(), &url);
+        let mut request_builder = self.client.request(method.clone(), &url);
 
         if authenticated {
-            let mut str_to_sign: String = format!(
+            let mut str_to_sign = format!(
                 "{}{}{}",
                 timestamp,
                 method.as_ref().to_uppercase(),
@@ -185,10 +184,9 @@ impl KuCoinClient {
                 str_to_sign.push_str(&body_str);
             }
 
-            let kc_api_sign: String = self.generate_signature(str_to_sign.as_bytes())?;
+            let kc_api_sign = self.generate_signature(str_to_sign.as_bytes())?;
 
-            let kc_api_passphrase: String =
-                self.generate_signature(self.api_passphrase.as_bytes())?;
+            let kc_api_passphrase = self.generate_signature(self.api_passphrase.as_bytes())?;
 
             request_builder = request_builder
                 .header("KC-API-KEY", &self.api_key)
@@ -205,23 +203,23 @@ impl KuCoinClient {
         }
         Ok(request_builder.send().await.map_err(|e| {
             if e.is_timeout() {
-                let msg: String = format!("Timeout {url}: {e}");
+                let msg = format!("Timeout {url}: {e}");
                 error!("{}", msg);
                 msg
             } else if e.is_connect() {
-                let msg: String = format!("Error connection {url}: {e}");
+                let msg = format!("Error connection {url}: {e}");
                 error!("{}", msg);
                 msg
             } else if e.is_request() {
-                let msg: String = format!("Error prepare request {url}: {e}");
+                let msg = format!("Error prepare request {url}: {e}");
                 error!("{}", msg);
                 msg
             } else if e.is_body() {
-                let msg: String = format!("Error in body {url}: {e}");
+                let msg = format!("Error in body {url}: {e}");
                 error!("{}", msg);
                 msg
             } else {
-                let msg: String = format!("Unexpected error {url}: {e}");
+                let msg = format!("Unexpected error {url}: {e}");
                 error!("{}", msg);
                 msg
             }
@@ -236,20 +234,20 @@ fn get_client() -> Result<&'static KuCoinClient, String> {
         .get_or_init(|| KuCoinClient::new())
         .as_ref()
         .map_err(|e| {
-            let msg: String = format!("Fail get or init KuCoinClient:{e}");
+            let msg = format!("Fail get or init KuCoinClient:{e}");
             error!("{}", msg);
             msg
         })?)
 }
 
 pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, String> {
-    let client: &KuCoinClient = get_client()?;
+    let client = get_client()?;
 
-    let response_string: String = client.api_v1_market_all_tickers_get().await?;
+    let response_string = client.api_v1_market_all_tickers_get().await?;
 
-    let response: ApiV1MarketAllTickers =
+    let response =
         serde_json::from_str::<ApiV1MarketAllTickers>(&response_string).map_err(|e| {
-            let msg: String = format!(
+            let msg = format!(
                 "Failed to deserialize response '{}' as {}: {}",
                 response_string,
                 stringify!(ApiV1MarketAllTickers),
@@ -262,7 +260,7 @@ pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, Strin
     match response.code.as_str() {
         "200000" => Ok(response.data),
         _ => {
-            let msg: String = format!(
+            let msg = format!(
                 "KuCoin API error: code={}, msg={:?}, data={:?}",
                 response.code, response.msg, response.data
             );
@@ -273,23 +271,21 @@ pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>, Strin
 }
 
 pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
-    let client: &KuCoinClient = get_client()?;
+    let client = get_client()?;
 
-    let response_string: String = client.api_v2_symbols_get().await?;
+    let response_string = client.api_v2_symbols_get().await?;
 
-    let response: ApiV2Symbols =
-        serde_json::from_str::<ApiV2Symbols>(&response_string).map_err(|e| {
-            let msg: String = format!(
-                "Failed to deserialize response '{response_string}' as (ApiV2Symbols): {e}"
-            );
-            error!("{}", msg);
-            msg
-        })?;
+    let response = serde_json::from_str::<ApiV2Symbols>(&response_string).map_err(|e| {
+        let msg =
+            format!("Failed to deserialize response '{response_string}' as (ApiV2Symbols): {e}");
+        error!("{}", msg);
+        msg
+    })?;
 
     match response.code.as_str() {
         "200000" => Ok(response.data),
         _ => {
-            let msg: String = format!(
+            let msg = format!(
                 "KuCoin API error: code={}, msg={:?}, data={:?}",
                 response.code, response.msg, response.data
             );
@@ -300,26 +296,25 @@ pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>, String> {
 }
 
 pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>, String> {
-    let client: &KuCoinClient = get_client()?;
+    let client = get_client()?;
 
-    let response_string: String = client.api_v3_currencies_get().await?;
+    let response_string = client.api_v3_currencies_get().await?;
 
-    let response: ApiV3Currencies = serde_json::from_str::<ApiV3Currencies>(&response_string)
-        .map_err(|e| {
-            let msg: String = format!(
-                "Failed to deserialize response '{}' as {}: {}",
-                response_string,
-                stringify!(ApiV3Currencies),
-                e
-            );
-            error!("{}", msg);
-            msg
-        })?;
+    let response = serde_json::from_str::<ApiV3Currencies>(&response_string).map_err(|e| {
+        let msg = format!(
+            "Failed to deserialize response '{}' as {}: {}",
+            response_string,
+            stringify!(ApiV3Currencies),
+            e
+        );
+        error!("{}", msg);
+        msg
+    })?;
 
     match response.code.as_str() {
         "200000" => Ok(response.data),
         _ => {
-            let msg: String = format!(
+            let msg = format!(
                 "KuCoin API error: code={}, msg={:?}, data={:?}",
                 response.code, response.msg, response.data
             );

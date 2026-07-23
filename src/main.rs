@@ -5,7 +5,6 @@ mod api {
     pub mod tools;
 }
 use crate::api::db::{insert_currencies_to_db, insert_symbols_to_db, insert_tickers_to_db};
-use crate::api::models::{Currencies, Symbol, TickerData};
 use crate::api::requests::{
     api_v1_market_all_tickers_get, api_v2_symbols_get, api_v3_currencies_get,
 };
@@ -16,7 +15,6 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use sqlx::PgPool;
 use tracing::{error, info};
 const EXCHANGE: &str = "kucoin";
 
@@ -33,9 +31,9 @@ async fn main() -> Result<(), String> {
     init_tracing();
     dotenv().ok();
 
-    let database_url: String = get_env("DATABASE_URL")?;
+    let database_url = get_env("DATABASE_URL")?;
 
-    let pool: PgPool = PgPoolOptions::new()
+    let pool = PgPoolOptions::new()
         .max_connections(10)
         .min_connections(1)
         .acquire_timeout(Duration::from_secs(10))
@@ -44,25 +42,25 @@ async fn main() -> Result<(), String> {
         .connect(&database_url)
         .await
         .map_err(|e| {
-            let msg: String = format!("Failed to create pg pool:{}", e);
+            let msg = format!("Failed to create pg pool:{}", e);
             error!("{}", msg);
             msg
         })?;
 
-    let pool_tickers: PgPool = pool.clone();
-    let pool_currency: PgPool = pool.clone();
-    let pool_symbols: PgPool = pool.clone();
+    let pool_tickers = pool.clone();
+    let pool_currency = pool.clone();
+    let pool_symbols = pool.clone();
 
-    let scheduler: JobScheduler = JobScheduler::new().await.map_err(|e| {
-        let msg: String = format!("Failed init scheduler:{}", e);
+    let scheduler = JobScheduler::new().await.map_err(|e| {
+        let msg = format!("Failed init scheduler:{}", e);
         error!("{}", msg);
         msg
     })?;
 
-    let job_tickers: Job = Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: PgPool = pool_tickers.clone();
+    let job_tickers = Job::new_async("0 */5 * * * *", move |_, _| {
+        let pool = pool_tickers.clone();
         Box::pin(async move {
-            let tickers: Option<TickerData> = match api_v1_market_all_tickers_get().await {
+            let tickers = match api_v1_market_all_tickers_get().await {
                 Err(e) => {
                     let msg = format!("Ошибка при выполнении запроса: {}", e);
                     error!("{}", msg);
@@ -82,23 +80,23 @@ async fn main() -> Result<(), String> {
         })
     })
     .map_err(|e| {
-        let msg: String = format!("Failed init scheduler ticker:{}", e);
+        let msg = format!("Failed init scheduler ticker:{}", e);
         error!("{}", msg);
         msg
     })?;
 
     scheduler.add(job_tickers).await.map_err(|e| {
-        let msg: String = format!("Failed add scheduler ticker:{}", e);
+        let msg = format!("Failed add scheduler ticker:{}", e);
         error!("{}", msg);
         msg
     })?;
 
     info!("Добавили задачу api_v1_market_alltickers");
 
-    let job_currencies: Job = Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: PgPool = pool_currency.clone();
+    let job_currencies = Job::new_async("0 */5 * * * *", move |_, _| {
+        let pool = pool_currency.clone();
         Box::pin(async move {
-            let currencies: Option<Vec<Currencies>> = match api_v3_currencies_get().await {
+            let currencies = match api_v3_currencies_get().await {
                 Ok(currencies) => currencies,
                 Err(e) => {
                     let msg = format!("Ошибка при выполнении запроса: {}", e);
@@ -118,26 +116,26 @@ async fn main() -> Result<(), String> {
         })
     })
     .map_err(|e| {
-        let msg: String = format!("Failed init scheduler currency:{}", e);
+        let msg = format!("Failed init scheduler currency:{}", e);
         error!("{}", msg);
         msg
     })?;
 
     scheduler.add(job_currencies).await.map_err(|e| {
-        let msg: String = format!("Failed add scheduler currency:{}", e);
+        let msg = format!("Failed add scheduler currency:{}", e);
         error!("{}", msg);
         msg
     })?;
 
     info!("Добавили задачу api_v3_currencies");
 
-    let job_symbols: Job = Job::new_async("0 */5 * * * *", move |_, _| {
-        let pool: PgPool = pool_symbols.clone();
+    let job_symbols = Job::new_async("0 */5 * * * *", move |_, _| {
+        let pool = pool_symbols.clone();
         Box::pin(async move {
-            let symbols: Option<Vec<Symbol>> = match api_v2_symbols_get().await {
+            let symbols = match api_v2_symbols_get().await {
                 Ok(symbols) => symbols,
                 Err(e) => {
-                    let msg: String = format!("Ошибка при выполнении запроса: {}", e);
+                    let msg = format!("Ошибка при выполнении запроса: {}", e);
                     error!("{}", msg);
                     return;
                 }
@@ -154,13 +152,13 @@ async fn main() -> Result<(), String> {
         })
     })
     .map_err(|e| {
-        let msg: String = format!("Failed init scheduler symbols:{}", e);
+        let msg = format!("Failed init scheduler symbols:{}", e);
         error!("{}", msg);
         msg
     })?;
 
     scheduler.add(job_symbols).await.map_err(|e| {
-        let msg: String = format!("Failed add scheduler symbols:{}", e);
+        let msg = format!("Failed add scheduler symbols:{}", e);
         error!("{}", msg);
         msg
     })?;
