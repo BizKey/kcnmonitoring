@@ -31,15 +31,13 @@ async fn main() -> Result<()> {
     init_tracing();
     dotenv().ok();
 
-    let database_url = get_env("DATABASE_URL")?;
-
     let pool = PgPoolOptions::new()
         .max_connections(10)
         .min_connections(1)
         .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Duration::from_secs(600))
         .max_lifetime(Duration::from_secs(1800))
-        .connect(&database_url)
+        .connect(&get_env("DATABASE_URL")?)
         .await?;
 
     let pool_tickers = pool.clone();
@@ -131,6 +129,6 @@ async fn main() -> Result<()> {
     scheduler.start().await?;
 
     loop {
-        sleep(Duration::from_secs(100)).await;
+        sleep(Duration::from_secs(1)).await;
     }
 }
