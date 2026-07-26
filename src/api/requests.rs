@@ -9,7 +9,6 @@ use sha2::Sha256;
 use std::sync::OnceLock;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::error;
 type HmacSha256 = Hmac<Sha256>;
 use anyhow::{Context, Result};
 #[derive(Debug, Clone)]
@@ -192,9 +191,7 @@ async fn read_response(response: Response) -> Result<String> {
 }
 
 pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>> {
-    let client = get_client()?;
-
-    let response_string = client.api_v1_market_all_tickers_get().await?;
+    let response_string = get_client()?.api_v1_market_all_tickers_get().await?;
 
     let response =
         serde_json::from_str::<ApiV1MarketAllTickers>(&response_string).with_context(|| {
@@ -218,9 +215,7 @@ pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>> {
 }
 
 pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>> {
-    let client = get_client()?;
-
-    let response_string = client.api_v2_symbols_get().await?;
+    let response_string = get_client()?.api_v2_symbols_get().await?;
 
     let response = serde_json::from_str::<ApiV2Symbols>(&response_string).with_context(|| {
         format!("Failed to deserialize response '{response_string}' as (ApiV2Symbols)")
@@ -239,9 +234,7 @@ pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>> {
 }
 
 pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>> {
-    let client = get_client()?;
-
-    let response_string = client.api_v3_currencies_get().await?;
+    let response_string = get_client()?.api_v3_currencies_get().await?;
 
     let response =
         serde_json::from_str::<ApiV3Currencies>(&response_string).with_context(|| {

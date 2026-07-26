@@ -1,7 +1,7 @@
 use crate::api::models::{Currencies, Symbol, TickerData};
 use anyhow::{Context, Result};
 use sqlx::{Postgres, QueryBuilder};
-use tracing::{error, info};
+use tracing::info;
 
 pub async fn insert_tickers_to_db(
     pool: sqlx::PgPool,
