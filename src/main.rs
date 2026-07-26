@@ -9,12 +9,12 @@ use crate::api::requests::{
     api_v1_market_all_tickers_get, api_v2_symbols_get, api_v3_currencies_get,
 };
 use crate::api::tools::get_env;
+use anyhow::{Context, Result};
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_cron_scheduler::{Job, JobScheduler};
-
 use tracing::{error, info};
 const EXCHANGE: &str = "kucoin";
 
@@ -27,7 +27,7 @@ fn init_tracing() {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), String> {
+async fn main() -> Result<()> {
     init_tracing();
     dotenv().ok();
 
@@ -40,22 +40,13 @@ async fn main() -> Result<(), String> {
         .idle_timeout(Duration::from_secs(600))
         .max_lifetime(Duration::from_secs(1800))
         .connect(&database_url)
-        .await
-        .map_err(|e| {
-            let msg = format!("Failed to create pg pool:{}", e);
-            error!("{}", msg);
-            msg
-        })?;
+        .await?;
 
     let pool_tickers = pool.clone();
     let pool_currency = pool.clone();
     let pool_symbols = pool.clone();
 
-    let scheduler = JobScheduler::new().await.map_err(|e| {
-        let msg = format!("Failed init scheduler:{}", e);
-        error!("{}", msg);
-        msg
-    })?;
+    let scheduler = JobScheduler::new().await?;
 
     let job_tickers = Job::new_async("0 */5 * * * *", move |_, _| {
         let pool = pool_tickers.clone();
@@ -78,18 +69,9 @@ async fn main() -> Result<(), String> {
                 _ => {}
             }
         })
-    })
-    .map_err(|e| {
-        let msg = format!("Failed init scheduler ticker:{}", e);
-        error!("{}", msg);
-        msg
     })?;
 
-    scheduler.add(job_tickers).await.map_err(|e| {
-        let msg = format!("Failed add scheduler ticker:{}", e);
-        error!("{}", msg);
-        msg
-    })?;
+    scheduler.add(job_tickers).await?;
 
     info!("Добавили задачу api_v1_market_alltickers");
 
@@ -114,18 +96,9 @@ async fn main() -> Result<(), String> {
                 _ => {}
             }
         })
-    })
-    .map_err(|e| {
-        let msg = format!("Failed init scheduler currency:{}", e);
-        error!("{}", msg);
-        msg
     })?;
 
-    scheduler.add(job_currencies).await.map_err(|e| {
-        let msg = format!("Failed add scheduler currency:{}", e);
-        error!("{}", msg);
-        msg
-    })?;
+    scheduler.add(job_currencies).await?;
 
     info!("Добавили задачу api_v3_currencies");
 
@@ -150,24 +123,12 @@ async fn main() -> Result<(), String> {
                 _ => {}
             }
         })
-    })
-    .map_err(|e| {
-        let msg = format!("Failed init scheduler symbols:{}", e);
-        error!("{}", msg);
-        msg
     })?;
 
-    scheduler.add(job_symbols).await.map_err(|e| {
-        let msg = format!("Failed add scheduler symbols:{}", e);
-        error!("{}", msg);
-        msg
-    })?;
+    scheduler.add(job_symbols).await?;
     info!("Добавили задачу api_v2_symbols");
 
-    scheduler.start().await.map_err(|e| {
-        error!("Failed start scheduler:{}", e);
-        format!("Failed start scheduler:{}", e)
-    })?;
+    scheduler.start().await?;
 
     loop {
         sleep(Duration::from_secs(100)).await;
