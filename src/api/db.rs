@@ -1,4 +1,5 @@
 use crate::api::models::{Currencies, Symbol, TickerData};
+use anyhow::{Context, Result};
 use sqlx::{Postgres, QueryBuilder};
 use tracing::{error, info};
 
@@ -6,7 +7,7 @@ pub async fn insert_tickers_to_db(
     pool: sqlx::PgPool,
     exchange: &str,
     tickers: TickerData,
-) -> Result<(), String> {
+) -> Result<()> {
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         "INSERT INTO ticker 
                 (exchange, symbol, symbol_name, taker_fee_rate, maker_fee_rate, taker_coefficient, maker_coefficient, updated_at)",
@@ -34,10 +35,11 @@ pub async fn insert_tickers_to_db(
                     updated_at = CURRENT_TIMESTAMP",
     );
 
-    query_builder.build().execute(&pool).await.map_err(|e| {
-        error!("Error on bulk insert tickers to db: {}", e);
-        format!("Error on bulk insert tickers to db: {}", e)
-    })?;
+    query_builder
+        .build()
+        .execute(&pool)
+        .await
+        .with_context(|| format!("Error on bulk insert tickers to db"))?;
 
     info!("Success insert {} tickers", tickers.ticker.len());
     Ok(())
@@ -46,7 +48,7 @@ pub async fn insert_symbols_to_db(
     pool: sqlx::PgPool,
     exchange: &str,
     symbols: Vec<Symbol>,
-) -> Result<(), String> {
+) -> Result<()> {
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         "INSERT INTO symbol
             (exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency,
@@ -108,10 +110,11 @@ pub async fn insert_symbols_to_db(
                 updated_at = CURRENT_TIMESTAMP",
     );
 
-    query_builder.build().execute(&pool).await.map_err(|e| {
-        error!("Error on bulk insert symbols to db: {}", e);
-        format!("Error on bulk insert symbols to db: {}", e)
-    })?;
+    query_builder
+        .build()
+        .execute(&pool)
+        .await
+        .with_context(|| format!("Error on bulk insert symbols to db"))?;
 
     info!("Success insert {} symbols", symbols.len());
     Ok(())
@@ -120,7 +123,7 @@ pub async fn insert_currencies_to_db(
     pool: sqlx::PgPool,
     exchange: &str,
     currencies: Vec<Currencies>,
-) -> Result<(), String> {
+) -> Result<()> {
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
                     "INSERT INTO currency
                     (exchange, currency, currency_name, full_name, precision, is_margin_enabled, is_debit_enabled, updated_at)",
@@ -148,10 +151,11 @@ pub async fn insert_currencies_to_db(
                 updated_at = CURRENT_TIMESTAMP",
     );
 
-    query_builder.build().execute(&pool).await.map_err(|e| {
-        error!("Error on bulk insert currencies to db: {}", e);
-        format!("Error on bulk insert currencies to db: {}", e)
-    })?;
+    query_builder
+        .build()
+        .execute(&pool)
+        .await
+        .with_context(|| format!("Error on bulk insert currencies to db"))?;
 
     info!("Success insert {} currencies", currencies.len());
     Ok(())
