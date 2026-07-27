@@ -66,7 +66,7 @@ async fn fetch_and_store_tickers(pool: sqlx::PgPool) {
         }
     };
 
-    if let Err(e) = insert_tickers_to_db(pool, EXCHANGE, tickers).await {
+    if let Err(e) = insert_tickers_to_db(&pool, EXCHANGE, tickers).await {
         error!("Failed to insert tickers to DB: {}", e);
     } else {
         info!("Successfully inserted tickers to DB");
@@ -86,7 +86,7 @@ async fn fetch_and_store_currencies(pool: sqlx::PgPool) {
         }
     };
 
-    if let Err(e) = insert_currencies_to_db(pool, EXCHANGE, currencies).await {
+    if let Err(e) = insert_currencies_to_db(&pool, EXCHANGE, currencies).await {
         error!("Failed to insert currencies to DB: {}", e);
     } else {
         info!("Successfully inserted currencies to DB");
@@ -106,7 +106,7 @@ async fn fetch_and_store_symbols(pool: sqlx::PgPool) {
         }
     };
 
-    if let Err(e) = insert_symbols_to_db(pool, EXCHANGE, symbols).await {
+    if let Err(e) = insert_symbols_to_db(&pool, EXCHANGE, symbols).await {
         error!("Failed to insert symbols to DB: {}", e);
     } else {
         info!("Successfully inserted symbols to DB");

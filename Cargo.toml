@@ -10,7 +10,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 serde = { version =  "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false }
 reqwest = {version = "0.13", default-features = false, features = ["rustls"]}
-sqlx = { version = "0.9", default-features = false, features = ["postgres", "runtime-tokio", "chrono", "tls-rustls"] }
+sqlx = { version = "0.9", default-features = false, features = ["postgres", "runtime-tokio", "chrono", "tls-rustls", "macros"] }
 sha2 = { version = "0.11", default-features = false }
 hmac = { version = "0.13", default-features = false }
 base64 = { version = "0.22", default-features = false }
