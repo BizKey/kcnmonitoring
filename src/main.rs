@@ -1,4 +1,3 @@
-// src/main.rs
 mod api {
     pub mod db;
     pub mod models;
@@ -6,22 +5,25 @@ mod api {
     pub mod tools;
 }
 
-mod application;
-mod container;
-mod domain;
-mod infrastructure;
-
+use crate::api::db::{insert_currencies_to_db, insert_symbols_to_db, insert_tickers_to_db};
+use crate::api::requests::{
+    api_v1_market_all_tickers_get, api_v2_symbols_get, api_v3_currencies_get,
+};
 use crate::api::tools::get_env;
-use crate::container::Container;
 use anyhow::{Context, Result};
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 const EXCHANGE: &str = "kucoin";
 const CRON_EVERY_5_MIN: &str = "0 */5 * * * *";
+const DB_MAX_CONNECTIONS: u32 = 10;
+const DB_MIN_CONNECTIONS: u32 = 1;
+const DB_ACQUIRE_TIMEOUT: u64 = 10;
+const DB_IDLE_TIMEOUT: u64 = 600;
+const DB_MAX_LIFETIME: u64 = 1800;
 
 fn init_tracing() {
     tracing_subscriber::fmt()
@@ -41,41 +43,113 @@ async fn create_db_pool() -> Result<sqlx::PgPool> {
     let database_url = get_env("DATABASE_URL").context("DATABASE_URL not set")?;
 
     PgPoolOptions::new()
-        .max_connections(10)
-        .min_connections(1)
-        .acquire_timeout(Duration::from_secs(10))
-        .idle_timeout(Duration::from_secs(600))
-        .max_lifetime(Duration::from_secs(1800))
+        .max_connections(DB_MAX_CONNECTIONS)
+        .min_connections(DB_MIN_CONNECTIONS)
+        .acquire_timeout(Duration::from_secs(DB_ACQUIRE_TIMEOUT))
+        .idle_timeout(Duration::from_secs(DB_IDLE_TIMEOUT))
+        .max_lifetime(Duration::from_secs(DB_MAX_LIFETIME))
         .connect(&database_url)
         .await
         .context("Failed to connect to database")
 }
 
-async fn create_sync_job(scheduler: &mut JobScheduler, container: &Container) -> Result<()> {
-    let sync_service = container.create_sync_service();
-    let job_name = "sync_all";
+async fn fetch_and_store_tickers(pool: sqlx::PgPool) {
+    let tickers = match api_v1_market_all_tickers_get().await {
+        Ok(Some(tickers)) => tickers,
+        Ok(None) => {
+            warn!("No tickers data received from API");
+            return;
+        }
+        Err(e) => {
+            error!("Failed to fetch tickers: {}", e);
+            return;
+        }
+    };
 
+    if let Err(e) = insert_tickers_to_db(&pool, EXCHANGE, tickers).await {
+        error!("Failed to insert tickers to DB: {}", e);
+    } else {
+        info!("Successfully inserted tickers to DB");
+    }
+}
+
+async fn fetch_and_store_currencies(pool: sqlx::PgPool) {
+    let currencies = match api_v3_currencies_get().await {
+        Ok(Some(currencies)) => currencies,
+        Ok(None) => {
+            warn!("No currencies data received from API");
+            return;
+        }
+        Err(e) => {
+            error!("Failed to fetch currencies: {}", e);
+            return;
+        }
+    };
+
+    if let Err(e) = insert_currencies_to_db(&pool, EXCHANGE, currencies).await {
+        error!("Failed to insert currencies to DB: {}", e);
+    } else {
+        info!("Successfully inserted currencies to DB");
+    }
+}
+
+async fn fetch_and_store_symbols(pool: sqlx::PgPool) {
+    let symbols = match api_v2_symbols_get().await {
+        Ok(Some(symbols)) => symbols,
+        Ok(None) => {
+            warn!("No symbols data received from API");
+            return;
+        }
+        Err(e) => {
+            error!("Failed to fetch symbols: {}", e);
+            return;
+        }
+    };
+
+    if let Err(e) = insert_symbols_to_db(&pool, EXCHANGE, symbols).await {
+        error!("Failed to insert symbols to DB: {}", e);
+    } else {
+        info!("Successfully inserted symbols to DB");
+    }
+}
+
+// ✅ Правильная реализация - замыкание захватывает все нужные данные
+async fn create_ticker_job(scheduler: &JobScheduler, pool: sqlx::PgPool) -> Result<()> {
     let job = Job::new_async(CRON_EVERY_5_MIN, move |_, _| {
-        let sync_service = sync_service.clone();
+        let pool = pool.clone();
         Box::pin(async move {
-            match sync_service.sync_all().await {
-                Ok(stats) => {
-                    info!(
-                        "Sync completed: {} tickers, {} symbols, {} currencies",
-                        stats.tickers_processed,
-                        stats.symbols_processed,
-                        stats.currencies_processed
-                    );
-                }
-                Err(e) => {
-                    error!("Sync failed: {}", e);
-                }
-            }
+            fetch_and_store_tickers(pool).await;
         })
     })?;
 
     scheduler.add(job).await?;
-    info!("Added job: {}", job_name);
+    info!("Added job: Tickers fetcher");
+    Ok(())
+}
+
+async fn create_currency_job(scheduler: &JobScheduler, pool: sqlx::PgPool) -> Result<()> {
+    let job = Job::new_async(CRON_EVERY_5_MIN, move |_, _| {
+        let pool = pool.clone();
+        Box::pin(async move {
+            fetch_and_store_currencies(pool).await;
+        })
+    })?;
+
+    scheduler.add(job).await?;
+    info!("Added job: Currencies fetcher");
+    Ok(())
+}
+
+async fn create_symbol_job(scheduler: &JobScheduler, pool: sqlx::PgPool) -> Result<()> {
+    let job = Job::new_async(CRON_EVERY_5_MIN, move |_, _| {
+        let pool = pool.clone();
+        Box::pin(async move {
+            fetch_and_store_symbols(pool).await;
+        })
+    })?;
+
+    scheduler.add(job).await?;
+    info!("Added job: Symbols fetcher");
     Ok(())
 }
 
@@ -90,16 +164,12 @@ async fn main() -> Result<()> {
     let pool = create_db_pool().await?;
     info!("Database connection pool created successfully");
 
-    let container = Container::new(pool).await?;
-    info!("Container initialized");
-
-    // Создаем scheduler отдельно
     let mut scheduler = JobScheduler::new().await?;
 
-    // Создаем задачу, передавая scheduler и container
-    create_sync_job(&mut scheduler, &container).await?;
+    create_ticker_job(&scheduler, pool.clone()).await?;
+    create_currency_job(&scheduler, pool.clone()).await?;
+    create_symbol_job(&scheduler, pool).await?;
 
-    // Запускаем scheduler
     scheduler.start().await?;
     info!("Scheduler started. All jobs will run every 5 minutes");
 
