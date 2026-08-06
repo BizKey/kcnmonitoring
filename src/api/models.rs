@@ -1,7 +1,19 @@
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct Ticker {
+pub struct ApiV1MarketAllTickers {
+    pub code: String,
+    pub msg: Option<String>,
+    pub data: Option<TickerData>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TickerData {
+    pub ticker: Vec<TickerApi>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TickerApi {
     pub symbol: String,
 
     #[serde(rename = "symbolName")]
@@ -21,18 +33,14 @@ pub struct Ticker {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct TickerData {
-    pub ticker: Vec<Ticker>,
-}
-#[derive(Debug, Deserialize)]
-pub struct ApiV1MarketAllTickers {
+pub struct ApiV3Currencies {
     pub code: String,
     pub msg: Option<String>,
-    pub data: Option<TickerData>,
+    pub data: Option<Vec<CurrenciesApi>>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Currencies {
+pub struct CurrenciesApi {
     pub currency: String,
     pub name: String,
 
@@ -49,14 +57,14 @@ pub struct Currencies {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ApiV3Currencies {
+pub struct ApiV2Symbols {
     pub code: String,
     pub msg: Option<String>,
-    pub data: Option<Vec<Currencies>>,
+    pub data: Option<Vec<SymbolApi>>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Symbol {
+pub struct SymbolApi {
     pub symbol: String,
     pub name: String,
 
@@ -114,11 +122,4 @@ pub struct Symbol {
     pub taker_fee_coefficient: String,
 
     pub st: bool,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ApiV2Symbols {
-    pub code: String,
-    pub msg: Option<String>,
-    pub data: Option<Vec<Symbol>>,
 }

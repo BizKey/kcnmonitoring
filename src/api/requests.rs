@@ -1,7 +1,7 @@
 use crate::api::models::{
-    ApiV1MarketAllTickers, ApiV2Symbols, ApiV3Currencies, Currencies, Symbol, TickerData,
+    ApiV1MarketAllTickers, ApiV2Symbols, ApiV3Currencies, CurrenciesApi, SymbolApi, TickerData,
 };
-use crate::api::tools::get_env;
+use crate::tools::get_env;
 use base64::Engine;
 use hmac::{Hmac, KeyInit, Mac};
 use reqwest::{Client, Method, Response};
@@ -214,7 +214,7 @@ pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>> {
     }
 }
 
-pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>> {
+pub async fn api_v2_symbols_get() -> Result<Option<Vec<SymbolApi>>> {
     let response_string = get_client()?.api_v2_symbols_get().await?;
 
     let response = serde_json::from_str::<ApiV2Symbols>(&response_string).with_context(|| {
@@ -233,7 +233,7 @@ pub async fn api_v2_symbols_get() -> Result<Option<Vec<Symbol>>> {
     }
 }
 
-pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>> {
+pub async fn api_v3_currencies_get() -> Result<Option<Vec<CurrenciesApi>>> {
     let response_string = get_client()?.api_v3_currencies_get().await?;
 
     let response =

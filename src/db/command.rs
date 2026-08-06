@@ -1,16 +1,16 @@
-use crate::api::models::{Currencies, Symbol, TickerData};
+use crate::db::models::{CurrenciesDb, SymbolDb, TickerDb};
 use anyhow::{Context, Result};
 use tracing::info;
 
 pub async fn insert_tickers_to_db(
     pool: &sqlx::PgPool,
     exchange: &str,
-    tickers: TickerData,
+    tickers: Vec<TickerDb>,
 ) -> Result<()> {
     let now = chrono::Utc::now();
-    let total = tickers.ticker.len();
+    let total = tickers.len();
 
-    for (index, ticker) in tickers.ticker.into_iter().enumerate() {
+    for (index, ticker) in tickers.into_iter().enumerate() {
         sqlx::query(
             r#"
             INSERT INTO ticker (
@@ -58,10 +58,77 @@ pub async fn insert_tickers_to_db(
     );
     Ok(())
 }
+
+pub async fn insert_currencies_to_db(
+    pool: &sqlx::PgPool,
+    exchange: &str,
+    currencies: Vec<CurrenciesDb>,
+) -> Result<()> {
+    if currencies.is_empty() {
+        info!("No currencies to insert");
+        return Ok(());
+    }
+
+    let now = chrono::Utc::now();
+    let total = currencies.len();
+
+    for (index, currency) in currencies.into_iter().enumerate() {
+        let result = sqlx::query(
+            r#"
+            INSERT INTO currency (
+                exchange, currency, currency_name, full_name, 
+                precision, is_margin_enabled, is_debit_enabled, 
+                updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (exchange, currency)
+            DO UPDATE SET
+                currency_name = EXCLUDED.currency_name,
+                full_name = EXCLUDED.full_name,
+                precision = EXCLUDED.precision,
+                is_margin_enabled = EXCLUDED.is_margin_enabled,
+                is_debit_enabled = EXCLUDED.is_debit_enabled,
+                updated_at = CURRENT_TIMESTAMP
+            "#,
+        )
+        .bind(exchange)
+        .bind(&currency.currency)
+        .bind(&currency.name)
+        .bind(&currency.full_name)
+        .bind(currency.precision)
+        .bind(currency.is_margin_enabled)
+        .bind(currency.is_debit_enabled)
+        .bind(now)
+        .execute(pool)
+        .await
+        .with_context(|| {
+            format!(
+                "Failed to insert/update currency at index {} with currency '{}'",
+                index, currency.currency
+            )
+        })?;
+
+        if (index + 1) % 500 == 0 || index + 1 == total {
+            info!(
+                "Progress: {}/{} currencies processed ({} rows affected)",
+                index + 1,
+                total,
+                result.rows_affected()
+            );
+        }
+    }
+
+    info!(
+        "Successfully processed {} currencies for exchange '{}'",
+        total, exchange
+    );
+    Ok(())
+}
+
 pub async fn insert_symbols_to_db(
     pool: &sqlx::PgPool,
     exchange: &str,
-    symbols: Vec<Symbol>,
+    symbols: Vec<SymbolDb>,
 ) -> Result<()> {
     let now = chrono::Utc::now();
     let total = symbols.len();
@@ -146,71 +213,6 @@ pub async fn insert_symbols_to_db(
 
     info!(
         "Successfully processed {} symbols for exchange '{}'",
-        total, exchange
-    );
-    Ok(())
-}
-pub async fn insert_currencies_to_db(
-    pool: &sqlx::PgPool,
-    exchange: &str,
-    currencies: Vec<Currencies>,
-) -> Result<()> {
-    if currencies.is_empty() {
-        info!("No currencies to insert");
-        return Ok(());
-    }
-
-    let now = chrono::Utc::now();
-    let total = currencies.len();
-
-    for (index, currency) in currencies.into_iter().enumerate() {
-        let result = sqlx::query(
-            r#"
-            INSERT INTO currency (
-                exchange, currency, currency_name, full_name, 
-                precision, is_margin_enabled, is_debit_enabled, 
-                updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (exchange, currency)
-            DO UPDATE SET
-                currency_name = EXCLUDED.currency_name,
-                full_name = EXCLUDED.full_name,
-                precision = EXCLUDED.precision,
-                is_margin_enabled = EXCLUDED.is_margin_enabled,
-                is_debit_enabled = EXCLUDED.is_debit_enabled,
-                updated_at = CURRENT_TIMESTAMP
-            "#,
-        )
-        .bind(exchange)
-        .bind(&currency.currency)
-        .bind(&currency.name)
-        .bind(&currency.full_name)
-        .bind(currency.precision)
-        .bind(currency.is_margin_enabled)
-        .bind(currency.is_debit_enabled)
-        .bind(now)
-        .execute(pool)
-        .await
-        .with_context(|| {
-            format!(
-                "Failed to insert/update currency at index {} with currency '{}'",
-                index, currency.currency
-            )
-        })?;
-
-        if (index + 1) % 500 == 0 || index + 1 == total {
-            info!(
-                "Progress: {}/{} currencies processed ({} rows affected)",
-                index + 1,
-                total,
-                result.rows_affected()
-            );
-        }
-    }
-
-    info!(
-        "Successfully processed {} currencies for exchange '{}'",
         total, exchange
     );
     Ok(())
