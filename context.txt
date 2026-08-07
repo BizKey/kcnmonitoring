@@ -56,6 +56,7 @@ tracing = { version = "0.1", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "json"] }
 tracing-appender = { version = "0.2", default-features = false }
 anyhow = { version = "1.0", default-features = false } 
+async-trait = { version = "0.1", default-features = false }
 
 [profile.release]
 opt-level = 3
@@ -77,7 +78,486 @@ debug = true
 inherits = "dev"
 opt-level = 1
 
-=== ./src/infra/logging.rs ===
+=== ./src/domain/repositories/symbol_repository.rs ===
+use crate::domain::entities::symbol::Symbol;
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait SymbolRepository: Send + Sync {
+    async fn save(
+        &self,
+        exchange: &str,
+        symbols: &[Symbol],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+}
+
+=== ./src/domain/repositories/mod.rs ===
+pub mod currency_repository;
+pub mod symbol_repository;
+pub mod ticker_repository;
+
+=== ./src/domain/repositories/currency_repository.rs ===
+use crate::domain::entities::currency::Currency;
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait CurrencyRepository: Send + Sync {
+    async fn save(
+        &self,
+        exchange: &str,
+        currencies: &[Currency],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+}
+
+=== ./src/domain/repositories/ticker_repository.rs ===
+use crate::domain::entities::ticker::Ticker;
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait TickerRepository: Send + Sync {
+    async fn save(
+        &self,
+        exchange: &str,
+        tickers: &[Ticker],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+}
+
+=== ./src/domain/mod.rs ===
+pub mod entities;
+pub mod repositories;
+
+=== ./src/domain/entities/symbol.rs ===
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Symbol {
+    pub symbol: String,
+    pub name: String,
+    pub base_currency: String,
+    pub quote_currency: String,
+    pub fee_currency: String,
+    pub market: String,
+    pub base_min_size: String,
+    pub quote_min_size: String,
+    pub base_max_size: String,
+    pub quote_max_size: String,
+    pub base_increment: String,
+    pub quote_increment: String,
+    pub price_increment: String,
+    pub price_limit_rate: String,
+    pub min_funds: Option<String>,
+    pub is_margin_enabled: bool,
+    pub enable_trading: bool,
+    pub fee_category: i16,
+    pub maker_fee_coefficient: String,
+    pub taker_fee_coefficient: String,
+    pub st: bool,
+}
+
+impl Symbol {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        symbol: String,
+        name: String,
+        base_currency: String,
+        quote_currency: String,
+        fee_currency: String,
+        market: String,
+        base_min_size: String,
+        quote_min_size: String,
+        base_max_size: String,
+        quote_max_size: String,
+        base_increment: String,
+        quote_increment: String,
+        price_increment: String,
+        price_limit_rate: String,
+        min_funds: Option<String>,
+        is_margin_enabled: bool,
+        enable_trading: bool,
+        fee_category: i16,
+        maker_fee_coefficient: String,
+        taker_fee_coefficient: String,
+        st: bool,
+    ) -> Self {
+        Self {
+            symbol,
+            name,
+            base_currency,
+            quote_currency,
+            fee_currency,
+            market,
+            base_min_size,
+            quote_min_size,
+            base_max_size,
+            quote_max_size,
+            base_increment,
+            quote_increment,
+            price_increment,
+            price_limit_rate,
+            min_funds,
+            is_margin_enabled,
+            enable_trading,
+            fee_category,
+            maker_fee_coefficient,
+            taker_fee_coefficient,
+            st,
+        }
+    }
+}
+
+=== ./src/domain/entities/currency.rs ===
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Currency {
+    pub currency: String,
+    pub name: String,
+    pub full_name: String,
+    pub precision: i16,
+    pub is_margin_enabled: bool,
+    pub is_debit_enabled: bool,
+}
+
+impl Currency {
+    pub fn new(
+        currency: String,
+        name: String,
+        full_name: String,
+        precision: i16,
+        is_margin_enabled: bool,
+        is_debit_enabled: bool,
+    ) -> Self {
+        Self {
+            currency,
+            name,
+            full_name,
+            precision,
+            is_margin_enabled,
+            is_debit_enabled,
+        }
+    }
+}
+
+=== ./src/domain/entities/mod.rs ===
+pub mod currency;
+pub mod symbol;
+pub mod ticker;
+
+=== ./src/domain/entities/ticker.rs ===
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Ticker {
+    pub symbol: String,
+    pub symbol_name: String,
+    pub taker_fee_rate: String,
+    pub maker_fee_rate: String,
+    pub taker_coefficient: String,
+    pub maker_coefficient: String,
+}
+
+impl Ticker {
+    pub fn new(
+        symbol: String,
+        symbol_name: String,
+        taker_fee_rate: String,
+        maker_fee_rate: String,
+        taker_coefficient: String,
+        maker_coefficient: String,
+    ) -> Self {
+        Self {
+            symbol,
+            symbol_name,
+            taker_fee_rate,
+            maker_fee_rate,
+            taker_coefficient,
+            maker_coefficient,
+        }
+    }
+}
+
+=== ./src/application/fetch_tickers.rs ===
+use crate::domain::{entities::ticker::Ticker, repositories::ticker_repository::TickerRepository};
+use crate::infrastructure::api::client::get_client;
+use std::sync::Arc;
+use tracing::{error, info, warn};
+
+pub struct FetchTickersUseCase<R: TickerRepository> {
+    repository: Arc<R>,
+}
+
+impl<R: TickerRepository> Clone for FetchTickersUseCase<R> {
+    fn clone(&self) -> Self {
+        Self {
+            repository: self.repository.clone(),
+        }
+    }
+}
+
+impl<R: TickerRepository> FetchTickersUseCase<R> {
+    pub fn new(repository: R) -> Self {
+        Self {
+            repository: Arc::new(repository),
+        }
+    }
+
+    pub async fn execute(
+        &self,
+        exchange: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        info!("Starting fetch tickers for exchange: {}", exchange);
+
+        let client = get_client()?;
+        let ticker_data = match client.api_v1_market_all_tickers_get().await {
+            Ok(Some(data)) => data,
+            Ok(None) => {
+                warn!("No tickers data received from API");
+                return Ok(());
+            }
+            Err(e) => {
+                error!("Failed to fetch tickers: {}", e);
+                return Err(e.into());
+            }
+        };
+
+        let tickers: Vec<Ticker> = ticker_data
+            .ticker
+            .into_iter()
+            .map(|t| {
+                Ticker::new(
+                    t.symbol,
+                    t.symbol_name,
+                    t.taker_fee_rate,
+                    t.maker_fee_rate,
+                    t.taker_coefficient,
+                    t.maker_coefficient,
+                )
+            })
+            .collect();
+
+        info!("Fetched {} tickers from API", tickers.len());
+
+        if let Err(e) = self.repository.save(exchange, &tickers).await {
+            error!("Failed to save tickers: {}", e);
+            return Err(e.into());
+        }
+
+        info!("Successfully saved {} tickers to database", tickers.len());
+        Ok(())
+    }
+}
+
+=== ./src/application/fetch_currencies.rs ===
+use crate::domain::{
+    entities::currency::Currency, repositories::currency_repository::CurrencyRepository,
+};
+use crate::infrastructure::api::client::get_client;
+use std::sync::Arc;
+use tracing::{error, info, warn};
+pub struct FetchCurrenciesUseCase<R: CurrencyRepository> {
+    repository: Arc<R>,
+}
+
+impl<R: CurrencyRepository> Clone for FetchCurrenciesUseCase<R> {
+    fn clone(&self) -> Self {
+        Self {
+            repository: self.repository.clone(),
+        }
+    }
+}
+
+impl<R: CurrencyRepository> FetchCurrenciesUseCase<R> {
+    pub fn new(repository: R) -> Self {
+        Self {
+            repository: Arc::new(repository),
+        }
+    }
+
+    pub async fn execute(
+        &self,
+        exchange: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        info!("Starting fetch currencies for exchange: {}", exchange);
+
+        let client = get_client()?;
+        let currencies_api = match client.api_v3_currencies_get().await {
+            Ok(Some(currencies)) => currencies,
+            Ok(None) => {
+                warn!("No currencies data received from API");
+                return Ok(());
+            }
+            Err(e) => {
+                error!("Failed to fetch currencies: {}", e);
+                return Err(e.into());
+            }
+        };
+
+        let currencies: Vec<Currency> = currencies_api
+            .into_iter()
+            .map(|c| {
+                Currency::new(
+                    c.currency,
+                    c.name,
+                    c.full_name,
+                    c.precision,
+                    c.is_margin_enabled,
+                    c.is_debit_enabled,
+                )
+            })
+            .collect();
+
+        info!("Fetched {} currencies from API", currencies.len());
+
+        if let Err(e) = self.repository.save(exchange, &currencies).await {
+            error!("Failed to save currencies: {}", e);
+            return Err(e.into());
+        }
+
+        info!(
+            "Successfully saved {} currencies to database",
+            currencies.len()
+        );
+        Ok(())
+    }
+}
+
+=== ./src/application/fetch_symbols.rs ===
+use crate::domain::{entities::symbol::Symbol, repositories::symbol_repository::SymbolRepository};
+use crate::infrastructure::api::client::get_client;
+use std::sync::Arc;
+use tracing::{error, info, warn};
+
+pub struct FetchSymbolsUseCase<R: SymbolRepository> {
+    repository: Arc<R>,
+}
+
+impl<R: SymbolRepository> Clone for FetchSymbolsUseCase<R> {
+    fn clone(&self) -> Self {
+        Self {
+            repository: self.repository.clone(),
+        }
+    }
+}
+
+impl<R: SymbolRepository> FetchSymbolsUseCase<R> {
+    pub fn new(repository: R) -> Self {
+        Self {
+            repository: Arc::new(repository),
+        }
+    }
+
+    pub async fn execute(
+        &self,
+        exchange: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        info!("Starting fetch symbols for exchange: {}", exchange);
+
+        let client = get_client()?;
+        let symbols_api = match client.api_v2_symbols_get().await {
+            Ok(Some(symbols)) => symbols,
+            Ok(None) => {
+                warn!("No symbols data received from API");
+                return Ok(());
+            }
+            Err(e) => {
+                error!("Failed to fetch symbols: {}", e);
+                return Err(e.into());
+            }
+        };
+
+        let symbols: Vec<Symbol> = symbols_api
+            .into_iter()
+            .map(|s| {
+                Symbol::new(
+                    s.symbol,
+                    s.name,
+                    s.base_currency,
+                    s.quote_currency,
+                    s.fee_currency,
+                    s.market,
+                    s.base_min_size,
+                    s.quote_min_size,
+                    s.base_max_size,
+                    s.quote_max_size,
+                    s.base_increment,
+                    s.quote_increment,
+                    s.price_increment,
+                    s.price_limit_rate,
+                    s.min_funds,
+                    s.is_margin_enabled,
+                    s.enable_trading,
+                    s.fee_category,
+                    s.maker_fee_coefficient,
+                    s.taker_fee_coefficient,
+                    s.st,
+                )
+            })
+            .collect();
+
+        info!("Fetched {} symbols from API", symbols.len());
+
+        if let Err(e) = self.repository.save(exchange, &symbols).await {
+            error!("Failed to save symbols: {}", e);
+            return Err(e.into());
+        }
+
+        info!("Successfully saved {} symbols to database", symbols.len());
+        Ok(())
+    }
+}
+
+=== ./src/application/mod.rs ===
+pub mod fetch_currencies;
+pub mod fetch_symbols;
+pub mod fetch_tickers;
+pub mod scheduler;
+
+=== ./src/application/scheduler.rs ===
+use anyhow::Result;
+use tokio_cron_scheduler::{Job, JobScheduler};
+use tracing::info;
+
+pub struct SchedulerService {
+    scheduler: JobScheduler,
+}
+
+impl SchedulerService {
+    pub async fn new() -> Result<Self> {
+        let scheduler = JobScheduler::new().await?;
+        Ok(Self { scheduler })
+    }
+
+    pub async fn add_job<F, Fut>(&mut self, cron: &str, name: &str, job_fn: F) -> Result<()>
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = ()> + Send + 'static,
+    {
+        let job = Job::new_async(cron, move |_, _| {
+            let job_fn = job_fn();
+            Box::pin(async move {
+                job_fn.await;
+            })
+        })?;
+
+        self.scheduler.add(job).await?;
+        info!("Added job: {}", name);
+        Ok(())
+    }
+
+    pub async fn start(&mut self) -> Result<()> {
+        self.scheduler.start().await?;
+        info!("Scheduler started");
+        Ok(())
+    }
+
+    pub async fn shutdown(&mut self) -> Result<()> {
+        self.scheduler.shutdown().await?;
+        info!("Scheduler shutdown");
+        Ok(())
+    }
+}
+
+=== ./src/infrastructure/logging.rs ===
 pub fn init_tracing() {
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -92,24 +572,53 @@ pub fn init_tracing() {
         .init();
 }
 
-=== ./src/infra/mod.rs ===
+=== ./src/infrastructure/config.rs ===
+use anyhow::{Context, Result};
+use std::env;
+
+pub struct Config {
+    pub kucoin_base_url: String,
+    pub kucoin_key: String,
+    pub kucoin_secret: String,
+    pub kucoin_passphrase: String,
+    pub database_url: String,
+}
+
+impl Config {
+    pub fn from_env() -> Result<Self> {
+        Ok(Self {
+            kucoin_base_url: get_env("KUCOIN_BASE_URL")?,
+            kucoin_key: get_env("KUCOIN_KEY")?,
+            kucoin_secret: get_env("KUCOIN_SECRET")?,
+            kucoin_passphrase: get_env("KUCOIN_PASS")?,
+            database_url: get_env("DATABASE_URL").context("DATABASE_URL not set")?,
+        })
+    }
+}
+
+fn get_env(key: &str) -> Result<String> {
+    Ok(env::var(key)?.trim().to_string())
+}
+
+=== ./src/infrastructure/mod.rs ===
+pub mod api;
+pub mod config;
+pub mod db;
 pub mod logging;
 
-=== ./src/api/requests.rs ===
-use crate::api::models::{
-    ApiV1MarketAllTickers, ApiV2Symbols, ApiV3Currencies, Currencies, SymbolApi, TickerData,
-};
-use crate::tools::get_env;
+=== ./src/infrastructure/api/requests.rs ===
+// Переносим существующий код из старого api/requests.rs с небольшими изменениями
+use crate::infrastructure::config::Config;
+use anyhow::{Context, Result};
 use base64::Engine;
 use hmac::{Hmac, KeyInit, Mac};
 use reqwest::{Client, Method, Response};
 use sha2::Sha256;
 use std::sync::OnceLock;
-use std::time::Duration;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 type HmacSha256 = Hmac<Sha256>;
-use anyhow::{Context, Result};
-#[derive(Debug, Clone)]
+
 pub struct KuCoinClient {
     client: Client,
     api_key: String,
@@ -119,77 +628,216 @@ pub struct KuCoinClient {
 }
 
 impl KuCoinClient {
-    pub fn new() -> Result<Self> {
-        let base_url = get_env("KUCOIN_BASE_URL")?;
-        let api_key = get_env("KUCOIN_KEY")?;
-        let api_secret = get_env("KUCOIN_SECRET")?;
-        let api_passphrase = get_env("KUCOIN_PASS")?;
-
+    pub fn new(config: &Config) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(15))
             .connect_timeout(Duration::from_secs(5))
             .tcp_keepalive(Duration::from_secs(60))
             .build()
-            .context("Get error on Client::builder")?;
+            .context("Failed to build HTTP client")?;
+
         Ok(Self {
             client,
-            api_key,
-            api_secret,
-            api_passphrase,
-            base_url,
+            api_key: config.kucoin_key.clone(),
+            api_secret: config.kucoin_secret.clone(),
+            api_passphrase: config.kucoin_passphrase.clone(),
+            base_url: config.kucoin_base_url.clone(),
+        })
+    }
+
+    // ... Остальные методы остаются такими же как в исходном коде
+    // (get_system_timestamp_ms, generate_signature, make_request)
+    
+    pub async fn api_v3_currencies_get(&self) -> Result<String> {
+        // как в исходном коде
+    }
+
+    pub async fn api_v1_market_all_tickers_get(&self) -> Result<String> {
+        // как в исходном коде
+    }
+
+    pub async fn api_v2_symbols_get(&self) -> Result<String> {
+        // как в исходном коде
+    }
+}
+
+static KUCLIENT: OnceLock<Result<KuCoinClient>> = OnceLock::new();
+
+pub fn init_client(config: &Config) -> Result<()> {
+    KUCLIENT.get_or_init(|| KuCoinClient::new(config));
+    Ok(())
+}
+
+fn get_client() -> Result<&'static KuCoinClient> {
+    KUCLIENT
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("KuCoin client not initialized"))?
+        .as_ref()
+        .map_err(|e| anyhow::anyhow!("KuCoin client error: {}", e))
+}
+=== ./src/infrastructure/api/mod.rs ===
+pub mod client;
+
+=== ./src/infrastructure/api/client.rs ===
+use crate::infrastructure::config::Config;
+use anyhow::{Context, Result};
+use base64::Engine;
+use hmac::{Hmac, KeyInit, Mac};
+use reqwest::{Client, Method, Response};
+use sha2::Sha256;
+use std::sync::OnceLock;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+type HmacSha256 = Hmac<Sha256>;
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ApiV1MarketAllTickers {
+    pub code: String,
+    pub msg: Option<String>,
+    pub data: Option<TickerData>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct TickerData {
+    pub ticker: Vec<TickerApi>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct TickerApi {
+    pub symbol: String,
+    #[serde(rename = "symbolName")]
+    pub symbol_name: String,
+    #[serde(rename = "takerFeeRate")]
+    pub taker_fee_rate: String,
+    #[serde(rename = "makerFeeRate")]
+    pub maker_fee_rate: String,
+    #[serde(rename = "takerCoefficient")]
+    pub taker_coefficient: String,
+    #[serde(rename = "makerCoefficient")]
+    pub maker_coefficient: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ApiV3Currencies {
+    pub code: String,
+    pub msg: Option<String>,
+    pub data: Option<Vec<CurrenciesApi>>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct CurrenciesApi {
+    pub currency: String,
+    pub name: String,
+    #[serde(rename = "fullName")]
+    pub full_name: String,
+    pub precision: i16,
+    #[serde(rename = "isMarginEnabled")]
+    pub is_margin_enabled: bool,
+    #[serde(rename = "isDebitEnabled")]
+    pub is_debit_enabled: bool,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ApiV2Symbols {
+    pub code: String,
+    pub msg: Option<String>,
+    pub data: Option<Vec<SymbolApi>>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct SymbolApi {
+    pub symbol: String,
+    pub name: String,
+    #[serde(rename = "baseCurrency")]
+    pub base_currency: String,
+    #[serde(rename = "quoteCurrency")]
+    pub quote_currency: String,
+    #[serde(rename = "feeCurrency")]
+    pub fee_currency: String,
+    pub market: String,
+    #[serde(rename = "baseMinSize")]
+    pub base_min_size: String,
+    #[serde(rename = "quoteMinSize")]
+    pub quote_min_size: String,
+    #[serde(rename = "baseMaxSize")]
+    pub base_max_size: String,
+    #[serde(rename = "quoteMaxSize")]
+    pub quote_max_size: String,
+    #[serde(rename = "baseIncrement")]
+    pub base_increment: String,
+    #[serde(rename = "quoteIncrement")]
+    pub quote_increment: String,
+    #[serde(rename = "priceIncrement")]
+    pub price_increment: String,
+    #[serde(rename = "priceLimitRate")]
+    pub price_limit_rate: String,
+    #[serde(rename = "minFunds")]
+    pub min_funds: Option<String>,
+    #[serde(rename = "isMarginEnabled")]
+    pub is_margin_enabled: bool,
+    #[serde(rename = "enableTrading")]
+    pub enable_trading: bool,
+    #[serde(rename = "feeCategory")]
+    pub fee_category: i16,
+    #[serde(rename = "makerFeeCoefficient")]
+    pub maker_fee_coefficient: String,
+    #[serde(rename = "takerFeeCoefficient")]
+    pub taker_fee_coefficient: String,
+    pub st: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct KuCoinClient {
+    client: Client,
+    api_key: String,
+    api_secret: String,
+    api_passphrase: String,
+    base_url: String,
+}
+
+static KUCLIENT: OnceLock<Result<KuCoinClient>> = OnceLock::new();
+
+pub fn init_client(config: &Config) -> Result<()> {
+    KUCLIENT.get_or_init(|| KuCoinClient::new(config));
+    Ok(())
+}
+
+pub fn get_client() -> Result<&'static KuCoinClient> {
+    KUCLIENT
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("KuCoin client not initialized"))?
+        .as_ref()
+        .map_err(|e| anyhow::anyhow!("KuCoin client error: {}", e))
+}
+
+impl KuCoinClient {
+    pub fn new(config: &Config) -> Result<Self> {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(15))
+            .connect_timeout(Duration::from_secs(5))
+            .tcp_keepalive(Duration::from_secs(60))
+            .build()
+            .context("Failed to build HTTP client")?;
+
+        Ok(Self {
+            client,
+            api_key: config.kucoin_key.clone(),
+            api_secret: config.kucoin_secret.clone(),
+            api_passphrase: config.kucoin_passphrase.clone(),
+            base_url: config.kucoin_base_url.clone(),
         })
     }
 
     fn get_system_timestamp_ms(&self) -> Result<u64> {
         Ok(SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .context("Get error get UNIX_EPOCH")?
+            .context("Failed to get UNIX_EPOCH")?
             .as_millis() as u64)
     }
 
-    async fn api_v3_currencies_get(&self) -> Result<String> {
-        Ok(read_response(
-            self.make_request(
-                Method::GET,
-                "/api/v3/currencies",
-                &String::new(),
-                &String::new(),
-                false,
-            )
-            .await?,
-        )
-        .await?)
-    }
-    async fn api_v1_market_all_tickers_get(&self) -> Result<String> {
-        Ok(read_response(
-            self.make_request(
-                Method::GET,
-                "/api/v1/market/allTickers",
-                &String::new(),
-                &String::new(),
-                false,
-            )
-            .await?,
-        )
-        .await?)
-    }
-    async fn api_v2_symbols_get(&self) -> Result<String> {
-        Ok(read_response(
-            self.make_request(
-                Method::GET,
-                "/api/v2/symbols",
-                &String::new(),
-                &String::new(),
-                false,
-            )
-            .await?,
-        )
-        .await?)
-    }
-
     fn generate_signature(&self, to_sign: &[u8]) -> Result<String> {
-        let mut mac =
-            HmacSha256::new_from_slice(self.api_secret.as_bytes()).context("Fail HmacSha256")?;
+        let mut mac = HmacSha256::new_from_slice(self.api_secret.as_bytes())
+            .context("Failed to create HMAC-SHA256")?;
         mac.update(to_sign);
         Ok(base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes()))
     }
@@ -223,13 +871,13 @@ impl KuCoinClient {
                 str_to_sign.push('?');
                 str_to_sign.push_str(&query_string);
             }
-            if !&body_str.is_empty() {
+            if !body_str.is_empty() {
                 str_to_sign.push_str(body_str);
             }
 
             let kc_api_sign = self
                 .generate_signature(str_to_sign.as_bytes())
-                .context("Fail generate signature")?;
+                .context("Failed to generate signature")?;
 
             let kc_api_passphrase = self.generate_signature(self.api_passphrase.as_bytes())?;
 
@@ -264,604 +912,83 @@ impl KuCoinClient {
             }
         }
     }
-}
 
-static KUCLIENT: OnceLock<Result<KuCoinClient>> = OnceLock::new();
+    async fn read_response(&self, response: Response) -> Result<String> {
+        let status = response.status().as_u16();
+        let body = response
+            .text()
+            .await
+            .context("Failed to read response body")?;
 
-fn get_client() -> Result<&'static KuCoinClient> {
-    KUCLIENT
-        .get_or_init(|| KuCoinClient::new())
-        .as_ref()
-        .map_err(|e| anyhow::anyhow!("Fail get or init KuCoinClient: {e}"))
-}
-
-async fn read_response(response: Response) -> Result<String> {
-    let status = response.status().as_u16();
-    let body = response
-        .text()
-        .await
-        .context("Failed to read response body from")?;
-
-    match status {
-        200 => Ok(body),
-        _ => anyhow::bail!("API returned error status {}: {}", status, body),
+        match status {
+            200 => Ok(body),
+            _ => anyhow::bail!("API returned error status {}: {}", status, body),
+        }
     }
-}
 
-pub async fn api_v1_market_all_tickers_get() -> Result<Option<TickerData>> {
-    let response_string = get_client()?.api_v1_market_all_tickers_get().await?;
+    pub async fn api_v3_currencies_get(&self) -> Result<Option<Vec<CurrenciesApi>>> {
+        let response = self
+            .make_request(Method::GET, "/api/v3/currencies", "", "", false)
+            .await?;
 
-    let response =
-        serde_json::from_str::<ApiV1MarketAllTickers>(&response_string).with_context(|| {
-            format!(
-                "Failed to deserialize response '{}' as {}",
-                response_string,
-                stringify!(ApiV1MarketAllTickers),
+        let body = self.read_response(response).await?;
+        let response_data = serde_json::from_str::<ApiV3Currencies>(&body)
+            .context("Failed to deserialize currencies response")?;
+
+        if response_data.code == "200000" {
+            Ok(response_data.data)
+        } else {
+            anyhow::bail!(
+                "KuCoin API error: code={}, msg={:?}",
+                response_data.code,
+                response_data.msg
             )
-        })?;
-
-    if response.code.as_str() == "200000" {
-        Ok(response.data)
-    } else {
-        anyhow::bail!(
-            "KuCoin API error: code={}, msg={:?}, data={:?}",
-            response.code,
-            response.msg,
-            response.data
-        )
+        }
     }
-}
 
-pub async fn api_v2_symbols_get() -> Result<Option<Vec<SymbolApi>>> {
-    let response_string = get_client()?.api_v2_symbols_get().await?;
+    pub async fn api_v1_market_all_tickers_get(&self) -> Result<Option<TickerData>> {
+        let response = self
+            .make_request(Method::GET, "/api/v1/market/allTickers", "", "", false)
+            .await?;
 
-    let response = serde_json::from_str::<ApiV2Symbols>(&response_string).with_context(|| {
-        format!("Failed to deserialize response '{response_string}' as (ApiV2Symbols)")
-    })?;
+        let body = self.read_response(response).await?;
+        let response_data = serde_json::from_str::<ApiV1MarketAllTickers>(&body)
+            .context("Failed to deserialize tickers response")?;
 
-    if response.code.as_str() == "200000" {
-        Ok(response.data)
-    } else {
-        anyhow::bail!(
-            "KuCoin API error: code={}, msg={:?}, data={:?}",
-            response.code,
-            response.msg,
-            response.data
-        )
-    }
-}
-
-pub async fn api_v3_currencies_get() -> Result<Option<Vec<Currencies>>> {
-    let response_string = get_client()?.api_v3_currencies_get().await?;
-
-    let response =
-        serde_json::from_str::<ApiV3Currencies>(&response_string).with_context(|| {
-            format!(
-                "Failed to deserialize response '{}' as {}",
-                response_string,
-                stringify!(ApiV3Currencies),
+        if response_data.code == "200000" {
+            Ok(response_data.data)
+        } else {
+            anyhow::bail!(
+                "KuCoin API error: code={}, msg={:?}",
+                response_data.code,
+                response_data.msg
             )
-        })?;
+        }
+    }
 
-    if response.code.as_str() == "200000" {
-        Ok(response.data)
-    } else {
-        anyhow::bail!(
-            "KuCoin API error: code={}, msg={:?}, data={:?}",
-            response.code,
-            response.msg,
-            response.data
-        )
+    pub async fn api_v2_symbols_get(&self) -> Result<Option<Vec<SymbolApi>>> {
+        let response = self
+            .make_request(Method::GET, "/api/v2/symbols", "", "", false)
+            .await?;
+
+        let body = self.read_response(response).await?;
+        let response_data = serde_json::from_str::<ApiV2Symbols>(&body)
+            .context("Failed to deserialize symbols response")?;
+
+        if response_data.code == "200000" {
+            Ok(response_data.data)
+        } else {
+            anyhow::bail!(
+                "KuCoin API error: code={}, msg={:?}",
+                response_data.code,
+                response_data.msg
+            )
+        }
     }
 }
 
-=== ./src/api/mod.rs ===
-pub mod models;
-pub mod requests;
-
-=== ./src/api/models.rs ===
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-pub struct ApiV1MarketAllTickers {
-    pub code: String,
-    pub msg: Option<String>,
-    pub data: Option<TickerData>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct TickerData {
-    pub ticker: Vec<Ticker>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Ticker {
-    pub symbol: String,
-
-    #[serde(rename = "symbolName")]
-    pub symbol_name: String,
-
-    #[serde(rename = "takerFeeRate")]
-    pub taker_fee_rate: String,
-
-    #[serde(rename = "makerFeeRate")]
-    pub maker_fee_rate: String,
-
-    #[serde(rename = "takerCoefficient")]
-    pub taker_coefficient: String,
-
-    #[serde(rename = "makerCoefficient")]
-    pub maker_coefficient: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ApiV3Currencies {
-    pub code: String,
-    pub msg: Option<String>,
-    pub data: Option<Vec<Currencies>>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Currencies {
-    pub currency: String,
-    pub name: String,
-
-    #[serde(rename = "fullName")]
-    pub full_name: String,
-
-    pub precision: i16,
-
-    #[serde(rename = "isMarginEnabled")]
-    pub is_margin_enabled: bool,
-
-    #[serde(rename = "isDebitEnabled")]
-    pub is_debit_enabled: bool,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ApiV2Symbols {
-    pub code: String,
-    pub msg: Option<String>,
-    pub data: Option<Vec<SymbolApi>>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct SymbolApi {
-    pub symbol: String,
-    pub name: String,
-
-    #[serde(rename = "baseCurrency")]
-    pub base_currency: String,
-
-    #[serde(rename = "quoteCurrency")]
-    pub quote_currency: String,
-
-    #[serde(rename = "feeCurrency")]
-    pub fee_currency: String,
-
-    pub market: String,
-
-    #[serde(rename = "baseMinSize")]
-    pub base_min_size: String,
-
-    #[serde(rename = "quoteMinSize")]
-    pub quote_min_size: String,
-
-    #[serde(rename = "baseMaxSize")]
-    pub base_max_size: String,
-
-    #[serde(rename = "quoteMaxSize")]
-    pub quote_max_size: String,
-
-    #[serde(rename = "baseIncrement")]
-    pub base_increment: String,
-
-    #[serde(rename = "quoteIncrement")]
-    pub quote_increment: String,
-
-    #[serde(rename = "priceIncrement")]
-    pub price_increment: String,
-
-    #[serde(rename = "priceLimitRate")]
-    pub price_limit_rate: String,
-
-    #[serde(rename = "minFunds")]
-    pub min_funds: Option<String>,
-
-    #[serde(rename = "isMarginEnabled")]
-    pub is_margin_enabled: bool,
-
-    #[serde(rename = "enableTrading")]
-    pub enable_trading: bool,
-
-    #[serde(rename = "feeCategory")]
-    pub fee_category: i16,
-
-    #[serde(rename = "makerFeeCoefficient")]
-    pub maker_fee_coefficient: String,
-
-    #[serde(rename = "takerFeeCoefficient")]
-    pub taker_fee_coefficient: String,
-
-    pub st: bool,
-}
-
-=== ./src/main.rs ===
-mod api;
-mod db;
-mod infra;
-mod tools;
+=== ./src/infrastructure/db/postgres/connection.rs ===
 use anyhow::Result;
-use api::requests::{api_v1_market_all_tickers_get, api_v2_symbols_get, api_v3_currencies_get};
-
-use db::command::{insert_currencies_to_db, insert_symbols_to_db, insert_tickers_to_db};
-use db::postgres::create_db_pool;
-use dotenvy::dotenv;
-use infra::logging::init_tracing;
-use tokio_cron_scheduler::{Job, JobScheduler};
-use tracing::{error, info, warn};
-
-const EXCHANGE: &str = "kucoin";
-const CRON_EVERY_5_MIN: &str = "0 */5 * * * *";
-
-async fn fetch_and_store_tickers(pool: sqlx::PgPool) {
-    let tickers = match api_v1_market_all_tickers_get().await {
-        Ok(Some(tickers)) => tickers,
-        Ok(None) => {
-            warn!("No tickers data received from API");
-            return;
-        }
-        Err(e) => {
-            error!("Failed to fetch tickers: {}", e);
-            return;
-        }
-    };
-
-    if let Err(e) = insert_tickers_to_db(&pool, EXCHANGE, tickers).await {
-        error!("Failed to insert tickers to DB: {}", e);
-    } else {
-        info!("Successfully inserted tickers to DB");
-    }
-}
-
-async fn fetch_and_store_currencies(pool: sqlx::PgPool) {
-    let currencies = match api_v3_currencies_get().await {
-        Ok(Some(currencies)) => currencies,
-        Ok(None) => {
-            warn!("No currencies data received from API");
-            return;
-        }
-        Err(e) => {
-            error!("Failed to fetch currencies: {}", e);
-            return;
-        }
-    };
-
-    if let Err(e) = insert_currencies_to_db(&pool, EXCHANGE, currencies).await {
-        error!("Failed to insert currencies to DB: {}", e);
-    } else {
-        info!("Successfully inserted currencies to DB");
-    }
-}
-
-async fn fetch_and_store_symbols(pool: sqlx::PgPool) {
-    let symbols = match api_v2_symbols_get().await {
-        Ok(Some(symbols)) => symbols,
-        Ok(None) => {
-            warn!("No symbols data received from API");
-            return;
-        }
-        Err(e) => {
-            error!("Failed to fetch symbols: {}", e);
-            return;
-        }
-    };
-
-    if let Err(e) = insert_symbols_to_db(&pool, EXCHANGE, symbols).await {
-        error!("Failed to insert symbols to DB: {}", e);
-    } else {
-        info!("Successfully inserted symbols to DB");
-    }
-}
-
-async fn create_ticker_job(scheduler: &JobScheduler, pool: sqlx::PgPool) -> Result<()> {
-    let job = Job::new_async(CRON_EVERY_5_MIN, move |_, _| {
-        let pool = pool.clone();
-        Box::pin(async move {
-            fetch_and_store_tickers(pool).await;
-        })
-    })?;
-
-    scheduler.add(job).await?;
-    info!("Added job: Tickers fetcher");
-    Ok(())
-}
-
-async fn create_currency_job(scheduler: &JobScheduler, pool: sqlx::PgPool) -> Result<()> {
-    let job = Job::new_async(CRON_EVERY_5_MIN, move |_, _| {
-        let pool = pool.clone();
-        Box::pin(async move {
-            fetch_and_store_currencies(pool).await;
-        })
-    })?;
-
-    scheduler.add(job).await?;
-    info!("Added job: Currencies fetcher");
-    Ok(())
-}
-
-async fn create_symbol_job(scheduler: &JobScheduler, pool: sqlx::PgPool) -> Result<()> {
-    let job = Job::new_async(CRON_EVERY_5_MIN, move |_, _| {
-        let pool = pool.clone();
-        Box::pin(async move {
-            fetch_and_store_symbols(pool).await;
-        })
-    })?;
-
-    scheduler.add(job).await?;
-    info!("Added job: Symbols fetcher");
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    init_tracing();
-    dotenv().ok();
-
-    info!("Starting KuCoin data fetcher");
-    info!("Exchange: {}", EXCHANGE);
-
-    let pool = create_db_pool().await?;
-    info!("Database connection pool created successfully");
-
-    let mut scheduler = JobScheduler::new().await?;
-
-    create_ticker_job(&scheduler, pool.clone()).await?;
-    create_currency_job(&scheduler, pool.clone()).await?;
-    create_symbol_job(&scheduler, pool).await?;
-
-    scheduler.start().await?;
-    info!("Scheduler started. All jobs will run every 5 minutes");
-
-    tokio::signal::ctrl_c()
-        .await
-        .expect("Failed to listen for shutdown signal");
-
-    info!("Shutting down gracefully...");
-    scheduler.shutdown().await?;
-
-    Ok(())
-}
-
-=== ./src/db/command.rs ===
-use crate::db::models::{Currencies, Symbol, Ticker};
-use anyhow::{Context, Result};
-use tracing::info;
-
-pub async fn insert_tickers_to_db(
-    pool: &sqlx::PgPool,
-    exchange: &str,
-    tickers: Vec<Ticker>,
-) -> Result<()> {
-    let now = chrono::Utc::now();
-    let total = tickers.len();
-
-    for (index, ticker) in tickers.into_iter().enumerate() {
-        sqlx::query(
-            r#"
-            INSERT INTO ticker (
-                exchange, symbol, symbol_name, 
-                taker_fee_rate, maker_fee_rate, 
-                taker_coefficient, maker_coefficient, 
-                updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (exchange, symbol)
-            DO UPDATE SET
-                symbol_name = EXCLUDED.symbol_name,
-                taker_fee_rate = EXCLUDED.taker_fee_rate,
-                maker_fee_rate = EXCLUDED.maker_fee_rate,
-                taker_coefficient = EXCLUDED.taker_coefficient,
-                maker_coefficient = EXCLUDED.maker_coefficient,
-                updated_at = CURRENT_TIMESTAMP
-            "#,
-        )
-        .bind(exchange)
-        .bind(&ticker.symbol)
-        .bind(&ticker.symbol_name)
-        .bind(&ticker.taker_fee_rate)
-        .bind(&ticker.maker_fee_rate)
-        .bind(&ticker.taker_coefficient)
-        .bind(&ticker.maker_coefficient)
-        .bind(now)
-        .execute(pool)
-        .await
-        .with_context(|| {
-            format!(
-                "Failed to insert/update ticker at index {} with symbol '{}'",
-                index, ticker.symbol
-            )
-        })?;
-
-        if (index + 1) % 500 == 0 || index + 1 == total {
-            info!("Progress: {}/{} tickers processed", index + 1, total);
-        }
-    }
-
-    info!(
-        "Successfully processed {} tickers for exchange '{}'",
-        total, exchange
-    );
-    Ok(())
-}
-
-pub async fn insert_currencies_to_db(
-    pool: &sqlx::PgPool,
-    exchange: &str,
-    currencies: Vec<Currencies>,
-) -> Result<()> {
-    if currencies.is_empty() {
-        info!("No currencies to insert");
-        return Ok(());
-    }
-
-    let now = chrono::Utc::now();
-    let total = currencies.len();
-
-    for (index, currency) in currencies.into_iter().enumerate() {
-        let result = sqlx::query(
-            r#"
-            INSERT INTO currency (
-                exchange, currency, currency_name, full_name, 
-                precision, is_margin_enabled, is_debit_enabled, 
-                updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (exchange, currency)
-            DO UPDATE SET
-                currency_name = EXCLUDED.currency_name,
-                full_name = EXCLUDED.full_name,
-                precision = EXCLUDED.precision,
-                is_margin_enabled = EXCLUDED.is_margin_enabled,
-                is_debit_enabled = EXCLUDED.is_debit_enabled,
-                updated_at = CURRENT_TIMESTAMP
-            "#,
-        )
-        .bind(exchange)
-        .bind(&currency.currency)
-        .bind(&currency.name)
-        .bind(&currency.full_name)
-        .bind(currency.precision)
-        .bind(currency.is_margin_enabled)
-        .bind(currency.is_debit_enabled)
-        .bind(now)
-        .execute(pool)
-        .await
-        .with_context(|| {
-            format!(
-                "Failed to insert/update currency at index {} with currency '{}'",
-                index, currency.currency
-            )
-        })?;
-
-        if (index + 1) % 500 == 0 || index + 1 == total {
-            info!(
-                "Progress: {}/{} currencies processed ({} rows affected)",
-                index + 1,
-                total,
-                result.rows_affected()
-            );
-        }
-    }
-
-    info!(
-        "Successfully processed {} currencies for exchange '{}'",
-        total, exchange
-    );
-    Ok(())
-}
-
-pub async fn insert_symbols_to_db(
-    pool: &sqlx::PgPool,
-    exchange: &str,
-    symbols: Vec<Symbol>,
-) -> Result<()> {
-    let now = chrono::Utc::now();
-    let total = symbols.len();
-
-    for (index, symbol) in symbols.into_iter().enumerate() {
-        let result = sqlx::query(
-            r#"
-            INSERT INTO symbol (
-                exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency,
-                market, base_min_size, quote_min_size, base_max_size, quote_max_size,
-                base_increment, quote_increment, price_increment, price_limit_rate,
-                min_funds, is_margin_enabled, enable_trading, fee_category,
-                maker_fee_coefficient, taker_fee_coefficient, st, updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
-            ON CONFLICT (exchange, symbol)
-            DO UPDATE SET
-                symbol_name = EXCLUDED.symbol_name,
-                base_currency = EXCLUDED.base_currency,
-                quote_currency = EXCLUDED.quote_currency,
-                fee_currency = EXCLUDED.fee_currency,
-                market = EXCLUDED.market,
-                base_min_size = EXCLUDED.base_min_size,
-                quote_min_size = EXCLUDED.quote_min_size,
-                base_max_size = EXCLUDED.base_max_size,
-                quote_max_size = EXCLUDED.quote_max_size,
-                base_increment = EXCLUDED.base_increment,
-                quote_increment = EXCLUDED.quote_increment,
-                price_increment = EXCLUDED.price_increment,
-                price_limit_rate = EXCLUDED.price_limit_rate,
-                min_funds = EXCLUDED.min_funds,
-                is_margin_enabled = EXCLUDED.is_margin_enabled,
-                enable_trading = EXCLUDED.enable_trading,
-                fee_category = EXCLUDED.fee_category,
-                maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
-                taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
-                st = EXCLUDED.st,
-                updated_at = CURRENT_TIMESTAMP
-            "#
-        )
-        .bind(exchange)
-        .bind(&symbol.symbol)
-        .bind(&symbol.name)
-        .bind(&symbol.base_currency)
-        .bind(&symbol.quote_currency)
-        .bind(&symbol.fee_currency)
-        .bind(&symbol.market)
-        .bind(&symbol.base_min_size)
-        .bind(&symbol.quote_min_size)
-        .bind(&symbol.base_max_size)
-        .bind(&symbol.quote_max_size)
-        .bind(&symbol.base_increment)
-        .bind(&symbol.quote_increment)
-        .bind(&symbol.price_increment)
-        .bind(&symbol.price_limit_rate)
-        .bind(&symbol.min_funds)
-        .bind(symbol.is_margin_enabled)
-        .bind(symbol.enable_trading)
-        .bind(&symbol.fee_category)
-        .bind(&symbol.maker_fee_coefficient)
-        .bind(&symbol.taker_fee_coefficient)
-        .bind(symbol.st)
-        .bind(now)
-        .execute(pool)
-        .await
-        .with_context(|| {
-            format!(
-                "Failed to insert/update symbol at index {} with symbol '{}'",
-                index, symbol.symbol
-            )
-        })?;
-
-        if (index + 1) % 500 == 0 || index + 1 == total {
-            info!(
-                "Progress: {}/{} symbols processed ({} rows affected)",
-                index + 1,
-                total,
-                result.rows_affected()
-            );
-        }
-    }
-
-    info!(
-        "Successfully processed {} symbols for exchange '{}'",
-        total, exchange
-    );
-    Ok(())
-}
-
-=== ./src/db/mod.rs ===
-pub mod command;
-pub mod models;
-pub mod postgres;
-
-=== ./src/db/postgres.rs ===
-use crate::tools::get_env;
-use anyhow::{Context, Result};
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
 
@@ -871,103 +998,399 @@ const DB_ACQUIRE_TIMEOUT: u64 = 10;
 const DB_IDLE_TIMEOUT: u64 = 600;
 const DB_MAX_LIFETIME: u64 = 1800;
 
-pub async fn create_db_pool() -> Result<sqlx::PgPool> {
-    let database_url = get_env("DATABASE_URL").context("DATABASE_URL not set")?;
-
+pub async fn create_db_pool(database_url: &str) -> Result<sqlx::PgPool> {
     PgPoolOptions::new()
         .max_connections(DB_MAX_CONNECTIONS)
         .min_connections(DB_MIN_CONNECTIONS)
         .acquire_timeout(Duration::from_secs(DB_ACQUIRE_TIMEOUT))
         .idle_timeout(Duration::from_secs(DB_IDLE_TIMEOUT))
         .max_lifetime(Duration::from_secs(DB_MAX_LIFETIME))
-        .connect(&database_url)
+        .connect(database_url)
         .await
-        .context("Failed to connect to database")
+        .map_err(Into::into)
 }
 
-=== ./src/db/models.rs ===
-use crate::api::models::SymbolApi;
-use serde::Deserialize;
+=== ./src/infrastructure/db/postgres/symbol_repository.rs ===
+use anyhow::Context;
+use async_trait::async_trait;
+use sqlx::PgPool;
+use tracing::info;
 
-#[derive(Debug, Deserialize)]
-pub struct Symbol {
-    pub symbol: String,
-    pub name: String,
-    pub base_currency: String,
-    pub quote_currency: String,
-    pub fee_currency: String,
-    pub market: String,
-    pub base_min_size: String,
-    pub quote_min_size: String,
-    pub base_max_size: String,
-    pub quote_max_size: String,
-    pub base_increment: String,
-    pub quote_increment: String,
-    pub price_increment: String,
-    pub price_limit_rate: String,
-    pub min_funds: Option<String>,
-    pub is_margin_enabled: bool,
-    pub enable_trading: bool,
-    pub fee_category: i16,
-    pub maker_fee_coefficient: String,
-    pub taker_fee_coefficient: String,
-    pub st: bool,
+use crate::domain::{entities::symbol::Symbol, repositories::symbol_repository::SymbolRepository};
+
+pub struct PostgresSymbolRepository {
+    pool: PgPool,
 }
 
-impl From<SymbolApi> for Symbol {
-    fn from(symbol: SymbolApi) -> Symbol {
-        Self {
-            symbol: symbol.symbol,
-            name: symbol.name,
-            base_currency: symbol.base_currency,
-            quote_currency: symbol.quote_currency,
-            fee_currency: symbol.fee_currency,
-            market: symbol.market,
-            base_min_size: symbol.base_min_size,
-            quote_min_size: symbol.quote_min_size,
-            base_max_size: symbol.base_max_size,
-            quote_max_size: symbol.quote_max_size,
-            base_increment: symbol.base_increment,
-            quote_increment: symbol.quote_increment,
-            price_increment: symbol.price_increment,
-            price_limit_rate: symbol.price_limit_rate,
-            min_funds: symbol.min_funds,
-            is_margin_enabled: symbol.is_margin_enabled,
-            enable_trading: symbol.enable_trading,
-            fee_category: symbol.fee_category,
-            maker_fee_coefficient: symbol.maker_fee_coefficient,
-            taker_fee_coefficient: symbol.taker_fee_coefficient,
-            st: symbol.st,
-        }
+impl PostgresSymbolRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Currencies {
-    pub currency: String,
-    pub name: String,
-    pub full_name: String,
-    pub precision: i16,
-    pub is_margin_enabled: bool,
-    pub is_debit_enabled: bool,
+#[async_trait]
+impl SymbolRepository for PostgresSymbolRepository {
+    async fn save(
+        &self,
+        exchange: &str,
+        symbols: &[Symbol],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let now = chrono::Utc::now();
+        let total = symbols.len();
+
+        for (index, symbol) in symbols.iter().enumerate() {
+            let result = sqlx::query(
+                r#"
+                INSERT INTO symbol (
+                    exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency,
+                    market, base_min_size, quote_min_size, base_max_size, quote_max_size,
+                    base_increment, quote_increment, price_increment, price_limit_rate,
+                    min_funds, is_margin_enabled, enable_trading, fee_category,
+                    maker_fee_coefficient, taker_fee_coefficient, st, updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+                ON CONFLICT (exchange, symbol)
+                DO UPDATE SET
+                    symbol_name = EXCLUDED.symbol_name,
+                    base_currency = EXCLUDED.base_currency,
+                    quote_currency = EXCLUDED.quote_currency,
+                    fee_currency = EXCLUDED.fee_currency,
+                    market = EXCLUDED.market,
+                    base_min_size = EXCLUDED.base_min_size,
+                    quote_min_size = EXCLUDED.quote_min_size,
+                    base_max_size = EXCLUDED.base_max_size,
+                    quote_max_size = EXCLUDED.quote_max_size,
+                    base_increment = EXCLUDED.base_increment,
+                    quote_increment = EXCLUDED.quote_increment,
+                    price_increment = EXCLUDED.price_increment,
+                    price_limit_rate = EXCLUDED.price_limit_rate,
+                    min_funds = EXCLUDED.min_funds,
+                    is_margin_enabled = EXCLUDED.is_margin_enabled,
+                    enable_trading = EXCLUDED.enable_trading,
+                    fee_category = EXCLUDED.fee_category,
+                    maker_fee_coefficient = EXCLUDED.maker_fee_coefficient,
+                    taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
+                    st = EXCLUDED.st,
+                    updated_at = CURRENT_TIMESTAMP
+                "#
+            )
+            .bind(exchange)
+            .bind(&symbol.symbol)
+            .bind(&symbol.name)
+            .bind(&symbol.base_currency)
+            .bind(&symbol.quote_currency)
+            .bind(&symbol.fee_currency)
+            .bind(&symbol.market)
+            .bind(&symbol.base_min_size)
+            .bind(&symbol.quote_min_size)
+            .bind(&symbol.base_max_size)
+            .bind(&symbol.quote_max_size)
+            .bind(&symbol.base_increment)
+            .bind(&symbol.quote_increment)
+            .bind(&symbol.price_increment)
+            .bind(&symbol.price_limit_rate)
+            .bind(&symbol.min_funds)
+            .bind(symbol.is_margin_enabled)
+            .bind(symbol.enable_trading)
+            .bind(&symbol.fee_category)
+            .bind(&symbol.maker_fee_coefficient)
+            .bind(&symbol.taker_fee_coefficient)
+            .bind(symbol.st)
+            .bind(now)
+            .execute(&self.pool)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to insert/update symbol at index {} with symbol '{}'",
+                    index, symbol.symbol
+                )
+            })?;
+
+            if (index + 1) % 500 == 0 || index + 1 == total {
+                info!(
+                    "Progress: {}/{} symbols processed ({} rows affected)",
+                    index + 1,
+                    total,
+                    result.rows_affected()
+                );
+            }
+        }
+
+        info!(
+            "Successfully processed {} symbols for exchange '{}'",
+            total, exchange
+        );
+        Ok(())
+    }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Ticker {
-    pub symbol: String,
-    pub symbol_name: String,
-    pub taker_fee_rate: String,
-    pub maker_fee_rate: String,
-    pub taker_coefficient: String,
-    pub maker_coefficient: String,
+=== ./src/infrastructure/db/postgres/mod.rs ===
+pub mod connection;
+pub mod currency_repository;
+pub mod symbol_repository;
+pub mod ticker_repository;
+
+=== ./src/infrastructure/db/postgres/currency_repository.rs ===
+use anyhow::Context;
+use async_trait::async_trait;
+use sqlx::PgPool;
+use tracing::info;
+
+use crate::domain::{
+    entities::currency::Currency, repositories::currency_repository::CurrencyRepository,
+};
+
+pub struct PostgresCurrencyRepository {
+    pool: PgPool,
 }
 
-=== ./src/tools.rs ===
+impl PostgresCurrencyRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl CurrencyRepository for PostgresCurrencyRepository {
+    async fn save(
+        &self,
+        exchange: &str,
+        currencies: &[Currency],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let now = chrono::Utc::now();
+        let total = currencies.len();
+
+        for (index, currency) in currencies.iter().enumerate() {
+            let result = sqlx::query(
+                r#"
+                INSERT INTO currency (
+                    exchange, currency, currency_name, full_name, 
+                    precision, is_margin_enabled, is_debit_enabled, 
+                    updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (exchange, currency)
+                DO UPDATE SET
+                    currency_name = EXCLUDED.currency_name,
+                    full_name = EXCLUDED.full_name,
+                    precision = EXCLUDED.precision,
+                    is_margin_enabled = EXCLUDED.is_margin_enabled,
+                    is_debit_enabled = EXCLUDED.is_debit_enabled,
+                    updated_at = CURRENT_TIMESTAMP
+                "#,
+            )
+            .bind(exchange)
+            .bind(&currency.currency)
+            .bind(&currency.name)
+            .bind(&currency.full_name)
+            .bind(currency.precision)
+            .bind(currency.is_margin_enabled)
+            .bind(currency.is_debit_enabled)
+            .bind(now)
+            .execute(&self.pool)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to insert/update currency at index {} with currency '{}'",
+                    index, currency.currency
+                )
+            })?;
+
+            if (index + 1) % 500 == 0 || index + 1 == total {
+                info!(
+                    "Progress: {}/{} currencies processed ({} rows affected)",
+                    index + 1,
+                    total,
+                    result.rows_affected()
+                );
+            }
+        }
+
+        info!(
+            "Successfully processed {} currencies for exchange '{}'",
+            total, exchange
+        );
+        Ok(())
+    }
+}
+
+=== ./src/infrastructure/db/postgres/ticker_repository.rs ===
+use anyhow::Context;
+use async_trait::async_trait;
+use sqlx::PgPool;
+use tracing::info;
+
+use crate::domain::{entities::ticker::Ticker, repositories::ticker_repository::TickerRepository};
+
+pub struct PostgresTickerRepository {
+    pool: PgPool,
+}
+
+impl PostgresTickerRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl TickerRepository for PostgresTickerRepository {
+    async fn save(
+        &self,
+        exchange: &str,
+        tickers: &[Ticker],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let now = chrono::Utc::now();
+        let total = tickers.len();
+
+        for (index, ticker) in tickers.iter().enumerate() {
+            sqlx::query(
+                r#"
+                INSERT INTO ticker (
+                    exchange, symbol, symbol_name, 
+                    taker_fee_rate, maker_fee_rate, 
+                    taker_coefficient, maker_coefficient, 
+                    updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (exchange, symbol)
+                DO UPDATE SET
+                    symbol_name = EXCLUDED.symbol_name,
+                    taker_fee_rate = EXCLUDED.taker_fee_rate,
+                    maker_fee_rate = EXCLUDED.maker_fee_rate,
+                    taker_coefficient = EXCLUDED.taker_coefficient,
+                    maker_coefficient = EXCLUDED.maker_coefficient,
+                    updated_at = CURRENT_TIMESTAMP
+                "#,
+            )
+            .bind(exchange)
+            .bind(&ticker.symbol)
+            .bind(&ticker.symbol_name)
+            .bind(&ticker.taker_fee_rate)
+            .bind(&ticker.maker_fee_rate)
+            .bind(&ticker.taker_coefficient)
+            .bind(&ticker.maker_coefficient)
+            .bind(now)
+            .execute(&self.pool)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to insert/update ticker at index {} with symbol '{}'",
+                    index, ticker.symbol
+                )
+            })?;
+
+            if (index + 1) % 500 == 0 || index + 1 == total {
+                info!("Progress: {}/{} tickers processed", index + 1, total);
+            }
+        }
+
+        info!(
+            "Successfully processed {} tickers for exchange '{}'",
+            total, exchange
+        );
+        Ok(())
+    }
+}
+
+=== ./src/infrastructure/db/mod.rs ===
+pub mod postgres;
+
+=== ./src/main.rs ===
+mod application;
+mod domain;
+mod infrastructure;
+
 use anyhow::Result;
-use std::env;
+use dotenvy::dotenv;
 
-pub fn get_env(key: &str) -> Result<String> {
-    Ok(env::var(key)?.trim().to_string())
+use application::{
+    fetch_currencies::FetchCurrenciesUseCase, fetch_symbols::FetchSymbolsUseCase,
+    fetch_tickers::FetchTickersUseCase, scheduler::SchedulerService,
+};
+use infrastructure::{
+    api::client::init_client,
+    config::Config,
+    db::postgres::{
+        connection::create_db_pool, currency_repository::PostgresCurrencyRepository,
+        symbol_repository::PostgresSymbolRepository, ticker_repository::PostgresTickerRepository,
+    },
+    logging::init_tracing,
+};
+
+const EXCHANGE: &str = "kucoin";
+const CRON_EVERY_5_MIN: &str = "0 */5 * * * *";
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    init_tracing();
+    dotenv().ok();
+
+    tracing::info!("Starting KuCoin data fetcher");
+    tracing::info!("Exchange: {}", EXCHANGE);
+
+    let config = Config::from_env()?;
+    tracing::info!("Configuration loaded");
+
+    init_client(&config)?;
+    tracing::info!("API client initialized");
+
+    let pool = create_db_pool(&config.database_url).await?;
+    tracing::info!("Database connection pool created");
+
+    let currency_repo = PostgresCurrencyRepository::new(pool.clone());
+    let symbol_repo = PostgresSymbolRepository::new(pool.clone());
+    let ticker_repo = PostgresTickerRepository::new(pool.clone());
+
+    let fetch_currencies = FetchCurrenciesUseCase::new(currency_repo);
+    let fetch_symbols = FetchSymbolsUseCase::new(symbol_repo);
+    let fetch_tickers = FetchTickersUseCase::new(ticker_repo);
+
+    let mut scheduler = SchedulerService::new().await?;
+    tracing::info!("Scheduler created");
+
+    scheduler
+        .add_job(CRON_EVERY_5_MIN, "Currencies fetcher", move || {
+            let use_case = fetch_currencies.clone();
+            async move {
+                if let Err(e) = use_case.execute(EXCHANGE).await {
+                    tracing::error!("Currency fetch failed: {}", e);
+                }
+            }
+        })
+        .await?;
+
+    scheduler
+        .add_job(CRON_EVERY_5_MIN, "Symbols fetcher", move || {
+            let use_case = fetch_symbols.clone();
+            async move {
+                if let Err(e) = use_case.execute(EXCHANGE).await {
+                    tracing::error!("Symbol fetch failed: {}", e);
+                }
+            }
+        })
+        .await?;
+
+    scheduler
+        .add_job(CRON_EVERY_5_MIN, "Tickers fetcher", move || {
+            let use_case = fetch_tickers.clone();
+            async move {
+                if let Err(e) = use_case.execute(EXCHANGE).await {
+                    tracing::error!("Ticker fetch failed: {}", e);
+                }
+            }
+        })
+        .await?;
+
+    scheduler.start().await?;
+
+    tokio::signal::ctrl_c()
+        .await
+        .expect("Failed to listen for shutdown signal");
+
+    tracing::info!("Shutting down gracefully...");
+    scheduler.shutdown().await?;
+
+    Ok(())
 }
 
 === ./context.txt ===

@@ -1,0 +1,77 @@
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Symbol {
+    pub symbol: String,
+    pub name: String,
+    pub base_currency: String,
+    pub quote_currency: String,
+    pub fee_currency: String,
+    pub market: String,
+    pub base_min_size: String,
+    pub quote_min_size: String,
+    pub base_max_size: String,
+    pub quote_max_size: String,
+    pub base_increment: String,
+    pub quote_increment: String,
+    pub price_increment: String,
+    pub price_limit_rate: String,
+    pub min_funds: Option<String>,
+    pub is_margin_enabled: bool,
+    pub enable_trading: bool,
+    pub fee_category: i16,
+    pub maker_fee_coefficient: String,
+    pub taker_fee_coefficient: String,
+    pub st: bool,
+}
+
+impl Symbol {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        symbol: String,
+        name: String,
+        base_currency: String,
+        quote_currency: String,
+        fee_currency: String,
+        market: String,
+        base_min_size: String,
+        quote_min_size: String,
+        base_max_size: String,
+        quote_max_size: String,
+        base_increment: String,
+        quote_increment: String,
+        price_increment: String,
+        price_limit_rate: String,
+        min_funds: Option<String>,
+        is_margin_enabled: bool,
+        enable_trading: bool,
+        fee_category: i16,
+        maker_fee_coefficient: String,
+        taker_fee_coefficient: String,
+        st: bool,
+    ) -> Self {
+        Self {
+            symbol,
+            name,
+            base_currency,
+            quote_currency,
+            fee_currency,
+            market,
+            base_min_size,
+            quote_min_size,
+            base_max_size,
+            quote_max_size,
+            base_increment,
+            quote_increment,
+            price_increment,
+            price_limit_rate,
+            min_funds,
+            is_margin_enabled,
+            enable_trading,
+            fee_category,
+            maker_fee_coefficient,
+            taker_fee_coefficient,
+            st,
+        }
+    }
+}
