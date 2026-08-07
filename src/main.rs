@@ -5,21 +5,12 @@ mod infrastructure;
 use anyhow::Result;
 use dotenvy::dotenv;
 
-use application::{
-    fetch_currencies::FetchCurrenciesUseCase, fetch_symbols::FetchSymbolsUseCase,
-    fetch_tickers::FetchTickersUseCase, scheduler::SchedulerService,
-};
+use application::scheduler::SchedulerService;
 use infrastructure::{
-    api::client::init_client,
-    config::Config,
-    db::postgres::{
-        connection::create_db_pool, currency_repository::PostgresCurrencyRepository,
-        symbol_repository::PostgresSymbolRepository, ticker_repository::PostgresTickerRepository,
-    },
+    config::Config, db::postgres::connection::create_db_pool, di::container::Container,
     logging::init_tracing,
 };
 
-const EXCHANGE: &str = "kucoin";
 const CRON_EVERY_5_MIN: &str = "0 */5 * * * *";
 
 #[tokio::main]
@@ -28,63 +19,52 @@ async fn main() -> Result<()> {
     dotenv().ok();
 
     tracing::info!("Starting KuCoin data fetcher");
-    tracing::info!("Exchange: {}", EXCHANGE);
 
+    // Загружаем конфигурацию
     let config = Config::from_env()?;
     tracing::info!("Configuration loaded");
 
-    init_client(&config)?;
-    tracing::info!("API client initialized");
-
+    // Создаем пул соединений с БД
     let pool = create_db_pool(&config.database_url).await?;
     tracing::info!("Database connection pool created");
 
-    let currency_repo = PostgresCurrencyRepository::new(pool.clone());
-    let symbol_repo = PostgresSymbolRepository::new(pool.clone());
-    let ticker_repo = PostgresTickerRepository::new(pool.clone());
+    // Строим DI контейнер
+    let container = Container::build(config, pool).await?;
+    tracing::info!("DI container built");
 
-    let fetch_currencies = FetchCurrenciesUseCase::new(currency_repo);
-    let fetch_symbols = FetchSymbolsUseCase::new(symbol_repo);
-    let fetch_tickers = FetchTickersUseCase::new(ticker_repo);
-
+    // Создаем и настраиваем планировщик
     let mut scheduler = SchedulerService::new().await?;
     tracing::info!("Scheduler created");
 
+    // Добавляем задачи через фабрику
     scheduler
-        .add_job(CRON_EVERY_5_MIN, "Currencies fetcher", move || {
-            let use_case = fetch_currencies.clone();
-            async move {
-                if let Err(e) = use_case.execute(EXCHANGE).await {
-                    tracing::error!("Currency fetch failed: {}", e);
-                }
-            }
-        })
+        .add_job(
+            CRON_EVERY_5_MIN,
+            "Currencies fetcher",
+            container.job_factory.create_currencies_job(),
+        )
         .await?;
 
     scheduler
-        .add_job(CRON_EVERY_5_MIN, "Symbols fetcher", move || {
-            let use_case = fetch_symbols.clone();
-            async move {
-                if let Err(e) = use_case.execute(EXCHANGE).await {
-                    tracing::error!("Symbol fetch failed: {}", e);
-                }
-            }
-        })
+        .add_job(
+            CRON_EVERY_5_MIN,
+            "Symbols fetcher",
+            container.job_factory.create_symbols_job(),
+        )
         .await?;
 
     scheduler
-        .add_job(CRON_EVERY_5_MIN, "Tickers fetcher", move || {
-            let use_case = fetch_tickers.clone();
-            async move {
-                if let Err(e) = use_case.execute(EXCHANGE).await {
-                    tracing::error!("Ticker fetch failed: {}", e);
-                }
-            }
-        })
+        .add_job(
+            CRON_EVERY_5_MIN,
+            "Tickers fetcher",
+            container.job_factory.create_tickers_job(),
+        )
         .await?;
 
+    // Запускаем планировщик
     scheduler.start().await?;
 
+    // Ожидаем сигнал завершения
     tokio::signal::ctrl_c()
         .await
         .expect("Failed to listen for shutdown signal");

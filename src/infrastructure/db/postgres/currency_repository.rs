@@ -1,11 +1,11 @@
-use anyhow::Context;
+use crate::domain::entities::currency::Currency;
+use crate::domain::repositories::currency_repository::{
+    CurrencyReadRepository, CurrencyWriteRepository,
+};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use sqlx::PgPool;
 use tracing::info;
-
-use crate::domain::{
-    entities::currency::Currency, repositories::currency_repository::CurrencyRepository,
-};
 
 pub struct PostgresCurrencyRepository {
     pool: PgPool,
@@ -18,17 +18,16 @@ impl PostgresCurrencyRepository {
 }
 
 #[async_trait]
-impl CurrencyRepository for PostgresCurrencyRepository {
-    async fn save(
-        &self,
-        exchange: &str,
-        currencies: &[Currency],
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+impl CurrencyReadRepository for PostgresCurrencyRepository {}
+
+#[async_trait]
+impl CurrencyWriteRepository for PostgresCurrencyRepository {
+    async fn save(&self, exchange: &str, currencies: &[Currency]) -> Result<()> {
         let now = chrono::Utc::now();
         let total = currencies.len();
 
         for (index, currency) in currencies.iter().enumerate() {
-            let result = sqlx::query(
+            sqlx::query(
                 r#"
                 INSERT INTO currency (
                     exchange, currency, currency_name, full_name, 
@@ -64,12 +63,7 @@ impl CurrencyRepository for PostgresCurrencyRepository {
             })?;
 
             if (index + 1) % 500 == 0 || index + 1 == total {
-                info!(
-                    "Progress: {}/{} currencies processed ({} rows affected)",
-                    index + 1,
-                    total,
-                    result.rows_affected()
-                );
+                info!("Progress: {}/{} currencies processed", index + 1, total);
             }
         }
 

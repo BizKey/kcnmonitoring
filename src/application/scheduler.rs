@@ -12,10 +12,9 @@ impl SchedulerService {
         Ok(Self { scheduler })
     }
 
-    pub async fn add_job<F, Fut>(&mut self, cron: &str, name: &str, job_fn: F) -> Result<()>
+    pub async fn add_job<F>(&mut self, cron: &str, name: &str, job_fn: F) -> Result<()>
     where
-        F: Fn() -> Fut + Send + Sync + 'static,
-        Fut: std::future::Future<Output = ()> + Send + 'static,
+        F: Fn() -> futures::future::BoxFuture<'static, ()> + Send + Sync + 'static,
     {
         let job = Job::new_async(cron, move |_, _| {
             let job_fn = job_fn();

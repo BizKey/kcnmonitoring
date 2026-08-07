@@ -12,7 +12,8 @@ pub struct Config {
 impl Config {
     pub fn from_env() -> Result<Self> {
         Ok(Self {
-            kucoin_base_url: get_env("KUCOIN_BASE_URL")?,
+            kucoin_base_url: get_env("KUCOIN_BASE_URL")
+                .unwrap_or_else(|_| "https://api.kucoin.com".to_string()),
             kucoin_key: get_env("KUCOIN_KEY")?,
             kucoin_secret: get_env("KUCOIN_SECRET")?,
             kucoin_passphrase: get_env("KUCOIN_PASS")?,

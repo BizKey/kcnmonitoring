@@ -26,7 +26,7 @@ impl<R: CurrencyRepository> FetchCurrenciesUseCase<R> {
     pub async fn execute(
         &self,
         exchange: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<()> {
         info!("Starting fetch currencies for exchange: {}", exchange);
 
         let client = get_client()?;

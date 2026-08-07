@@ -1,9 +1,9 @@
-use anyhow::Context;
+use crate::domain::entities::ticker::Ticker;
+use crate::domain::repositories::ticker_repository::*;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use sqlx::PgPool;
 use tracing::info;
-
-use crate::domain::{entities::ticker::Ticker, repositories::ticker_repository::TickerRepository};
 
 pub struct PostgresTickerRepository {
     pool: PgPool,
@@ -16,12 +16,11 @@ impl PostgresTickerRepository {
 }
 
 #[async_trait]
-impl TickerRepository for PostgresTickerRepository {
-    async fn save(
-        &self,
-        exchange: &str,
-        tickers: &[Ticker],
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+impl TickerReadRepository for PostgresTickerRepository {}
+
+#[async_trait]
+impl TickerWriteRepository for PostgresTickerRepository {
+    async fn save(&self, exchange: &str, tickers: &[Ticker]) -> Result<()> {
         let now = chrono::Utc::now();
         let total = tickers.len();
 

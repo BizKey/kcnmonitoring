@@ -1,9 +1,9 @@
-use anyhow::Context;
+use crate::domain::entities::symbol::Symbol;
+use crate::domain::repositories::symbol_repository::{SymbolReadRepository, SymbolWriteRepository};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use sqlx::PgPool;
 use tracing::info;
-
-use crate::domain::{entities::symbol::Symbol, repositories::symbol_repository::SymbolRepository};
 
 pub struct PostgresSymbolRepository {
     pool: PgPool,
@@ -16,17 +16,16 @@ impl PostgresSymbolRepository {
 }
 
 #[async_trait]
-impl SymbolRepository for PostgresSymbolRepository {
-    async fn save(
-        &self,
-        exchange: &str,
-        symbols: &[Symbol],
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+impl SymbolReadRepository for PostgresSymbolRepository {}
+
+#[async_trait]
+impl SymbolWriteRepository for PostgresSymbolRepository {
+    async fn save(&self, exchange: &str, symbols: &[Symbol]) -> Result<()> {
         let now = chrono::Utc::now();
         let total = symbols.len();
 
         for (index, symbol) in symbols.iter().enumerate() {
-            let result = sqlx::query(
+            sqlx::query(
                 r#"
                 INSERT INTO symbol (
                     exchange, symbol, symbol_name, base_currency, quote_currency, fee_currency,
@@ -59,7 +58,7 @@ impl SymbolRepository for PostgresSymbolRepository {
                     taker_fee_coefficient = EXCLUDED.taker_fee_coefficient,
                     st = EXCLUDED.st,
                     updated_at = CURRENT_TIMESTAMP
-                "#
+                "#,
             )
             .bind(exchange)
             .bind(&symbol.symbol)
@@ -94,12 +93,7 @@ impl SymbolRepository for PostgresSymbolRepository {
             })?;
 
             if (index + 1) % 500 == 0 || index + 1 == total {
-                info!(
-                    "Progress: {}/{} symbols processed ({} rows affected)",
-                    index + 1,
-                    total,
-                    result.rows_affected()
-                );
+                info!("Progress: {}/{} symbols processed", index + 1, total);
             }
         }
 
