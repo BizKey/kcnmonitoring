@@ -20,23 +20,21 @@ async fn main() -> Result<()> {
 
     tracing::info!("Starting KuCoin data fetcher");
 
-    // Загружаем конфигурацию
+
     let config = Config::from_env()?;
     tracing::info!("Configuration loaded");
 
-    // Создаем пул соединений с БД
     let pool = create_db_pool(&config.database_url).await?;
     tracing::info!("Database connection pool created");
 
-    // Строим DI контейнер
     let container = Container::build(config, pool).await?;
     tracing::info!("DI container built");
 
-    // Создаем и настраиваем планировщик
+
     let mut scheduler = SchedulerService::new().await?;
     tracing::info!("Scheduler created");
 
-    // Добавляем задачи через фабрику
+
     scheduler
         .add_job(
             CRON_EVERY_5_MIN,
@@ -61,10 +59,8 @@ async fn main() -> Result<()> {
         )
         .await?;
 
-    // Запускаем планировщик
     scheduler.start().await?;
 
-    // Ожидаем сигнал завершения
     tokio::signal::ctrl_c()
         .await
         .expect("Failed to listen for shutdown signal");

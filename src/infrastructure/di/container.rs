@@ -24,15 +24,13 @@ pub struct Container {
 
 impl Container {
     pub async fn build(config: Config, pool: PgPool) -> Result<Self> {
-        // Создаем API клиент
+        
         let api_client = Arc::new(KuCoinClient::new(&config)?);
 
-        // Создаем репозитории
         let currency_repo = Arc::new(PostgresCurrencyRepository::new(pool.clone()));
         let symbol_repo = Arc::new(PostgresSymbolRepository::new(pool.clone()));
         let ticker_repo = Arc::new(PostgresTickerRepository::new(pool.clone()));
 
-        // Создаем сервис мониторинга
         let monitoring_service = Arc::new(MonitoringServiceImpl::new(
             api_client.clone(),
             currency_repo.clone(),
@@ -40,7 +38,6 @@ impl Container {
             ticker_repo.clone(),
         ));
 
-        // Создаем фабрику задач
         let job_factory = JobFactory::new(monitoring_service.clone(), "kucoin".to_string());
 
         Ok(Self {
