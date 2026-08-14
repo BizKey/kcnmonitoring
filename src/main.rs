@@ -20,7 +20,6 @@ async fn main() -> Result<()> {
 
     tracing::info!("Starting KuCoin data fetcher");
 
-
     let config = Config::from_env()?;
     tracing::info!("Configuration loaded");
 
@@ -30,10 +29,8 @@ async fn main() -> Result<()> {
     let container = Container::build(config, pool).await?;
     tracing::info!("DI container built");
 
-
     let mut scheduler = SchedulerService::new().await?;
     tracing::info!("Scheduler created");
-
 
     scheduler
         .add_job(

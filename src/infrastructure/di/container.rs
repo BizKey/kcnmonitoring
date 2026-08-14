@@ -24,7 +24,6 @@ pub struct Container {
 
 impl Container {
     pub async fn build(config: Config, pool: PgPool) -> Result<Self> {
-        
         let api_client = Arc::new(KuCoinClient::new(&config)?);
 
         let currency_repo = Arc::new(PostgresCurrencyRepository::new(pool.clone()));
