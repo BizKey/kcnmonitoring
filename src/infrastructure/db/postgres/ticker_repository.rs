@@ -1,5 +1,5 @@
 use crate::domain::entities::ticker::Ticker;
-use crate::domain::repositories::ticker_repository::*;
+use crate::domain::repositories::ticker_repository::{TickerReadRepository, TickerWriteRepository};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use sqlx::PgPool;
